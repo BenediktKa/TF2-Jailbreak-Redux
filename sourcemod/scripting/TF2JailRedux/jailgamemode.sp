@@ -1,632 +1,13 @@
-
-methodmap JailGameMode < StringMap
+enum// TOGGLE_STATE
 {
-	property int iRoundState
-	{
-		public get()
-		{
-			int i; this.GetValue("iRoundState", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			this.SetValue("iRoundState", i);
-		}
-	}
-	property int iPlaying
-	{
-		public get()
-		{
-			int playing;
-			for (int i = MaxClients; i; --i) 
-			{
-				if (!IsClientInGame(i))
-					continue;
-				if (!IsPlayerAlive(i))
-					continue;
-				++playing;
-			}
-			return playing;
-		}
-	}
-	property int iTimeLeft
-	{
-		public get()
-		{
-			int i; this.GetValue("iTimeLeft", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			this.SetValue("iTimeLeft", i);
-		}
-	}
-	property int iRoundCount
-	{
-		public get()
-		{
-			int i; this.GetValue("iRoundCount", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			this.SetValue("iRoundCount", i);
-		}
-	}
-	property int iLRPresetType
-	{
-		public get()
-		{
-			int i; this.GetValue("iLRPresetType", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			this.SetValue("iLRPresetType", i);
-		}
-	}
-	property int iLRType
-	{
-		public get()
-		{
-			int i; this.GetValue("iLRType", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			this.SetValue("iLRType", i);
-		}
-	}
-	property int iMuteType
-	{
-		public get()
-		{
-			int i; this.GetValue("iMuteType", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			this.SetValue("iMuteType", i);
-		}
-	}
-	property int iLivingMuteType
-	{
-		public get()
-		{
-			int i; this.GetValue("iLivingMuteType", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			this.SetValue("iLivingMuteType", i);
-		}
-	}
-	property int iVoters
-	{
-		public get()
-		{
-			int i; this.GetValue("iVoters", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			this.SetValue("iVoters", i);
-		}
-	}
-	property int iVotes
-	{
-		public get()
-		{
-			int i; this.GetValue("iVotes", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			this.SetValue("iVotes", i);
-		}
-	}
-	property int iVotesNeeded
-	{
-		public get()
-		{
-			int i; this.GetValue("iVotesNeeded", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			this.SetValue("iVotesNeeded", i);
-		}
-	}
-	property int iLRs
-	{
-		public get()
-		{
-			int i; this.GetValue("iLRs", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			this.SetValue("iLRs", i);
-		}
-	}
+	TS_AT_TOP,
+	TS_AT_BOTTOM,
+	TS_GOING_UP,
+	TS_GOING_DOWN
+};
 
-#if defined _SteamWorks_Included
-	property bool bSteam
-	{
-		public get()
-		{
-			bool i; this.GetValue("bSteam", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bSteam", i);
-		}
-	}
-#endif
-#if defined _sourcebans_included || defined _sourcebanspp_included
-	property bool bSB
-	{
-		public get()
-		{
-			bool i; this.GetValue("bSB", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bSB", i);
-		}
-	}
-#endif
-	property bool bSC
-	{
-		public get()
-		{
-			bool i; this.GetValue("bSC", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bSC", i);
-		}
-	}
-#if defined _voiceannounce_ex_included
-	property bool bVA
-	{
-		public get()
-		{
-			bool i; this.GetValue("bVA", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bVA", i);
-		}
-	}
-#endif
-	property bool bTF2Attribs
-	{
-		public get()
-		{
-			bool i; this.GetValue("bTF2Attribs", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bTF2Attribs", i);
-		}
-	}
-	property bool bIsMapCompatible
-	{
-		public get()
-		{
-			bool i; this.GetValue("bIsMapCompatible", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bIsMapCompatible", i);
-		}
-	}
-	property bool bFreedayTeleportSet
-	{
-		public get()
-		{
-			bool i; this.GetValue("bFreedayTeleportSet", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bFreedayTeleportSet", i);
-		}
-	}
-	property bool bStartedWithOneGuard
-	{
-		public get()
-		{
-			bool i; this.GetValue("bStartedWithOneGuard", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bStartedWithOneGuard", i);
-		}
-	}
-	property bool bWardayTeleportSetBlue
-	{
-		public get()
-		{
-			bool i; this.GetValue("bWardayTeleportSetBlue", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bWardayTeleportSetBlue", i);
-		}
-	}
-	property bool bWardayTeleportSetRed
-	{
-		public get()
-		{
-			bool i; this.GetValue("bWardayTeleportSetRed", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bWardayTeleportSetRed", i);
-		}
-	}
-	property bool bCellsOpened
-	{
-		public get()
-		{
-			bool i; this.GetValue("bCellsOpened", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bCellsOpened", i);
-		}
-	}
-	property bool b1stRoundFreeday
-	{
-		public get()
-		{
-			bool i; this.GetValue("b1stRoundFreeday", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("b1stRoundFreeday", i);
-		}
-	}
-	property bool bIsLRInUse
-	{
-		public get()
-		{
-			bool i; this.GetValue("bIsLRInUse", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bIsLRInUse", i);
-		}
-	}
-	property bool bIsWardenLocked
-	{
-		public get()
-		{
-			bool i; this.GetValue("bIsWardenLocked", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bIsWardenLocked", i);
-		}
-	}
-	property bool bOneGuardLeft
-	{
-		public get()
-		{
-			bool i; this.GetValue("bOneGuardLeft", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bOneGuardLeft", i);
-		}
-	}
-	property bool bOnePrisonerLeft
-	{
-		public get()
-		{
-			bool i; this.GetValue("bOnePrisonerLeft", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bOnePrisonerLeft", i);
-		}
-	}
-	property bool bAdminLockedLR
-	{
-		public get()
-		{
-			bool i; this.GetValue("bAdminLockedLR", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bAdminLockedLR", i);
-		}
-	}
-	property bool bDisableCriticals
-	{
-		public get()
-		{
-			bool i; this.GetValue("bDisableCriticals", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bDisableCriticals", i);
-		}
-	}
-	property bool bIsFreedayRound
-	{
-		public get()
-		{
-			bool i; this.GetValue("bIsFreedayRound", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bIsFreedayRound", i);
-		}
-	}
-	property bool bWardenExists
-	{
-		public get()
-		{
-			bool i; this.GetValue("bWardenExists", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bWardenExists", i);
-		}
-	}
-	property bool bFirstDoorOpening
-	{
-		public get()
-		{
-			bool i; this.GetValue("bFirstDoorOpening", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bFirstDoorOpening", i);
-		}
-	}
-	property bool bIsWarday
-	{
-		public get()
-		{
-			bool i; this.GetValue("bIsWarday", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bIsWarday", i);
-		}
-	}
-	property bool bMarkerExists
-	{
-		public get()
-		{
-			bool i; this.GetValue("bMarkerExists", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bMarkerExists", i);
-		}
-	}
-	property bool bAllowBuilding
-	{
-		public get()
-		{
-			bool i; this.GetValue("bAllowBuilding", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bAllowBuilding", i);
-		}
-	}
-	property bool bSilentWardenKills
-	{
-		public get()
-		{
-			bool i; this.GetValue("bSilentWardenKills", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bSilentWardenKills", i);
-		}
-	}
-	property bool bMedicDisabled
-	{
-		public get()
-		{
-			bool i; this.GetValue("bMedicDisabled", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bMedicDisabled", i);
-		}
-	}
-	property bool bDisableMuting
-	{
-		public get()
-		{
-			bool i; this.GetValue("bDisableMuting", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bDisableMuting", i);
-		}
-	}
-	property bool bDisableKillSpree
-	{
-		public get()
-		{
-			bool i; this.GetValue("bDisableKillSpree", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bDisableKillSpree", i);
-		}
-	}
-	property bool bIgnoreRebels
-	{
-		public get()
-		{
-			bool i; this.GetValue("bIgnoreRebels", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bIgnoreRebels", i);
-		}
-	}
-	property bool bIsLRRound
-	{
-		public get()
-		{
-			bool i; this.GetValue("bIsLRRound", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			this.SetValue("bIsLRRound", i);
-		}
-	}
-
-	property float flMusicTime
-	{
-		public get()
-		{
-			float i; this.GetValue("flMusicTime", i);
-			return i;
-		}
-		public set( const float i )
-		{
-			this.SetValue("flMusicTime", i);
-		}
-	}
-
-	property JailFighter iWarden
-	{
-		public get()
-		{
-			if (!this.bWardenExists)
-				return view_as< JailFighter >(0);
-
-			JailFighter i; this.GetValue("iWarden", i);
-			return i;
-		}
-		public set( const JailFighter i )
-		{
-			this.SetValue("iWarden", i);
-		}
-	}
-
-	/**
-	 *	Purpose: Store the plugin handles from registered sub-plugins.
-	*/
-	property ArrayList hPlugins
-	{
-		public get()
-		{
-			ArrayList i; this.GetValue("hPlugins", i);
-			return i;
-		}
-		public set( const ArrayList i )
-		{
-			this.SetValue("hPlugins", i);
-		}
-	}
-
-	/**
-	 *	Purpose: Store the plugin handles from registered sub-plugin LR packs.
-	 *	Add a setter if you need. Don't see why you'd need one though.
-	*/
-	/*property ArrayList hPacks
-	{
-		public get()
-		{
-			ArrayList i; this.GetValue("hPacks", i);
-			return i;
-		}
-	}*/
-
-	/**
-	 *	Purpose: Store the Warden Menu, but keep it exposed to sub-plugins.
-	*/
-	property Menu hWardenMenu
-	{
-		public get()
-		{
-			Menu i; this.GetValue("hWardenMenu", i);
-			return i;
-		}
-		public set( const Menu i )
-		{
-			this.SetValue("hWardenMenu", i);
-		}
-	}
-
-	/**
-	 *	ArrayList of LR usage
-	 *	You can determine the maximum picks per round under AddLRsToMenu()
-	 *	Size is automatically managed
-	*/
-	property ArrayList hLRS
-	{
-		public get()
-		{
-			ArrayList i; this.GetValue("hLRS", i);
-			return i;
-		}
-		public set ( const ArrayList i )
-		{
-			this.SetValue("hLRS", i);
-		}
-	}
-
-	/**
-	 *	Purpose: Store the list of targetfilters allocated by map config
-	 *	Contains strings of target filter names to create and delete
-	 *	for each map
-	*/
-	property StringMap hTargetFilters
-	{
-		public get()
-		{
-			StringMap i; this.GetValue("hTargetFilters", i);
-			return i;
-		}
-		public set ( const StringMap i )
-		{
-			this.SetValue("hTargetFilters", i);
-		}
-	}
-	// When adding a new property, make sure you initialize it to a default
+methodmap JailGameMode < JBGameMode
+{
 	public JailGameMode()
 	{
 		JailGameMode gm = view_as< JailGameMode >(new StringMap());
@@ -640,10 +21,8 @@ methodmap JailGameMode < StringMap
 		gm.iVoters = 0;
 		gm.iVotes = 0;
 		gm.iVotesNeeded = 0;
-		gm.iLRs = 0;
-		gm.iWarden = view_as< JailFighter >(0);
+		gm.iWarden = view_as< JBPlayer >(0);
 		gm.bFreedayTeleportSet = false;
-		gm.bTF2Attribs = false;
 		gm.bIsFreedayRound = false;
 		gm.bDisableCriticals = false;
 		gm.bWardenExists = false;
@@ -663,115 +42,141 @@ methodmap JailGameMode < StringMap
 		gm.bDisableMuting = false;
 		gm.bDisableKillSpree = false;
 		gm.bIgnoreRebels = false;
-#if defined _SteamWorks_Included
-		gm.bSteam = false;
-#endif
-#if defined _sourcebans_included || defined _sourcebanspp_included
-		gm.bSB = false;
-#endif
-		gm.bSC = false;
-#if defined _voiceannounce_ex_included
-		gm.bVA = false;
-#endif
+		gm.bIgnoreFreekillers = false;
 		gm.bMarkerExists = false;
 		gm.bIsLRRound = false;
 		gm.flMusicTime = 0.0;
-		gm.hPlugins = new ArrayList();
 		gm.hTargetFilters = new StringMap();
+		gm.hLRS = new StringMap();
+		gm.hLRCount = new ArrayList();
 		return gm;
 	}
-	/**
-	 *	Find and Initialize a random player as the Warden.
-	 *
-	 *	@return 				JailFighter instance of the new Warden.
-	*/
-	public JailFighter FindRandomWarden()
-	{
-		int client = GetRandomPlayer(BLU, true);
-		if (client == -1)
-			return view_as< JailFighter >(0);
 
-		JailFighter player = JailFighter(client);
-		return player.WardenSet() ? player : view_as< JailFighter >(0);
+	property JailFighter iWarden
+	{
+		public get()
+		{
+			return view_as< JailFighter >(view_as< JBGameMode >(this).iWarden);
+		}
+		public set(const JailFighter i)
+		{
+			this.SetProp("iWarden", i ? i.userid : 0);
+		}
 	}
+	
 	/**
 	 *	Handle the cell doors.
 	 *
 	 *	@param status 			Type of cell door usage found in the eDoorsMode enum.
 	 *	@param announce 		Announce message to all clients.
-	 *	@param fromwarden 		If true, current warden will be the client announced who activated cells. 
-	 *							If false, undisclosed admin is the announced activator.
-	 *							Do NOT set this param to true if there is no current Warden.
+	 *	@param fromwarden 		Unused
 	 *	@param overridefwds 	If true, forwards will not be called for the according action.
 	 *
 	 *	@noreturn
 	*/
-	public void DoorHandler( const eDoorsMode status, bool announce = false, bool fromwarden = true, bool overridefwds = false )
+	public bool DoorHandler( const eDoorsMode status, bool announce = false, bool fromwarden = true, bool overridefwds = false )
 	{
-		if (strCellNames[0] != '\0')
+		if (strCellNames[0] == '\0')
+			return false;
+
+		switch (status)
 		{
-			char name[32];
-			switch (status)
+			case OPEN:
 			{
-				case OPEN:
-				{
-					if (!overridefwds)
-						if (Call_OnDoorsOpen() != Plugin_Continue) 
-							return;
-					FormatEx(name, sizeof(name), "%t", "Opened");
-					this.bCellsOpened = true;
-					if (!this.bFirstDoorOpening)
-						this.bFirstDoorOpening = true;
-				}
-				case CLOSE:
-				{
-					if (!overridefwds)
-						if (Call_OnDoorsClose() != Plugin_Continue) 
-							return;
-					FormatEx(name, sizeof(name), "%t", "Closed");
-					this.bCellsOpened = false;
-				}
-				case LOCK:
-				{
-					if (!overridefwds)
-						if (Call_OnDoorsLock() != Plugin_Continue) 
-							return;
-					FormatEx(name, sizeof(name), "%t", "Locked");
-				}
-				case UNLOCK:
-				{
-					if (!overridefwds)
-						if (Call_OnDoorsUnlock() != Plugin_Continue) 
-							return;
-					FormatEx(name, sizeof(name), "%t", "Unlocked");
-				}
+				if (!overridefwds)
+					if (Call_OnDoorsOpen() != Plugin_Continue) 
+						return false;
+//					FormatEx(name, sizeof(name), "%t", "Opened");
 			}
-
-			if (announce)
-				if (fromwarden)
-					CPrintToChatAll("%t %t", "Plugin Tag", "Warden Work Cells", this.iWarden.index, name);
-				else CPrintToChatAll("%t %t", "Admin Tag", "Admin Work Cells", name);
-
-			int i, ent = -1;
-			for (i = 0; i < sizeof(strDoorsList); i++)
+			case CLOSE:
 			{
-				ent = -1;
-				while ((ent = FindEntityByClassnameSafe(ent, strDoorsList[i])) != -1)
+				if (!overridefwds)
+					if (Call_OnDoorsClose() != Plugin_Continue) 
+						return false;
+//					FormatEx(name, sizeof(name), "%t", "Closed");
+			}
+			case LOCK:
+			{
+				if (!overridefwds)
+					if (Call_OnDoorsLock() != Plugin_Continue) 
+						return false;
+//					FormatEx(name, sizeof(name), "%t", "Locked");
+			}
+			case UNLOCK:
+			{
+				if (!overridefwds)
+					if (Call_OnDoorsUnlock() != Plugin_Continue) 
+						return false;
+//					FormatEx(name, sizeof(name), "%t", "Unlocked");
+			}
+		}
+
+		char name[32];
+//		if (announce)
+//			if (fromwarden)
+//				CPrintToChatAll("%t %t", "Plugin Tag", "Warden Work Cells", this.iWarden.index, name);
+//			else CPrintToChatAll("%t %t", "Admin Tag", "Admin Work Cells", name);
+
+		int i, ent = -1;
+		bool success;
+		for (i = 0; i < sizeof(strDoorsList); i++)
+		{
+			ent = -1;
+			while ((ent = FindEntityByClassname(ent, strDoorsList[i])) != -1)
+			{
+				GetEntPropString(ent, Prop_Data, "m_iName", name, sizeof(name));
+				if (!strcmp(name, strCellNames, false))
 				{
-					GetEntPropString(ent, Prop_Data, "m_iName", name, sizeof(name));
-					if (StrEqual(name, strCellNames, false))
+					int m_toggle_state = GetEntProp(ent, Prop_Data, "m_toggle_state");
+					switch (status)
 					{
-						switch (status)
+						case OPEN:
 						{
-							case OPEN:AcceptEntityInput(ent, "Open");
-							case CLOSE:AcceptEntityInput(ent, "Close");
-							case LOCK:AcceptEntityInput(ent, "Lock");
-							case UNLOCK:AcceptEntityInput(ent, "Unlock");
+							if (m_toggle_state != TS_AT_TOP && m_toggle_state != TS_GOING_UP)
+							{
+								if (!GetEntProp(ent, Prop_Data, "m_bLocked"))
+								{
+									AcceptEntityInput(ent, "Open");
+									success = true;
+									this.bCellsOpened = true;
+									this.bFirstDoorOpening = true;
+								}
+							}
+						}
+						case CLOSE:
+						{
+							if (m_toggle_state != TS_AT_BOTTOM)
+							{
+								AcceptEntityInput(ent, "Close");
+								success = true;
+								this.bCellsOpened = false;
+							}
+						}
+						case LOCK:
+						{
+							// func_movelinears do not have a lock ability, easiest way to check is to HasEntProp
+							if (HasEntProp(ent, Prop_Data, "m_bLocked") && !GetEntProp(ent, Prop_Data, "m_bLocked"))
+							{
+								AcceptEntityInput(ent, "Lock");
+								success = true;
+							}
+						}
+						case UNLOCK:
+						{
+							if (HasEntProp(ent, Prop_Data, "m_bLocked") && GetEntProp(ent, Prop_Data, "m_bLocked"))
+							{
+								AcceptEntityInput(ent, "Unlock");
+								success = true;
+							}
 						}
 					}
 				}
 			}
 		}
+
+		if (success)
+			Call_OnCellsManaged(status);
+		return success;
 	}
 	/**
 	 *	Reset the Warden-firing votes.
@@ -827,11 +232,8 @@ methodmap JailGameMode < StringMap
 			ent = -1;
 			while ((ent = FindEntityByClassname(ent, strDoorsList[i])) != -1)
 			{
-				if (IsValidEntity(ent))
-				{
-					AcceptEntityInput(ent, "Unlock");
-					AcceptEntityInput(ent, "Open");
-				}
+				AcceptEntityInput(ent, "Unlock");
+				AcceptEntityInput(ent, "Open");
 			}
 		}
 	}
@@ -847,9 +249,8 @@ methodmap JailGameMode < StringMap
 	{
 		int ent = -1;
 		while ((ent = FindEntityByClassname(ent, "trigger_hurt")) != -1)
-			if (IsValidEntity(ent))
-				if (GetEntPropFloat(ent, Prop_Data, "m_flDamage") < 0)
-					AcceptEntityInput(ent, status ? "Enable" : "Disable");
+			if (GetEntPropFloat(ent, Prop_Data, "m_flDamage") < 0)
+				AcceptEntityInput(ent, status ? "Enable" : "Disable");
 
 		this.bMedicDisabled = !status;
 	}
@@ -881,6 +282,9 @@ methodmap JailGameMode < StringMap
 	*/
 	public void ToggleMuting( const JailFighter player, bool forcedead = false, int teamchange = 0 )
 	{
+		if (IsFakeClient(player.index))
+			return;
+
 		if (this.iRoundState != StateRunning || this.bDisableMuting)
 		{
 			player.UnmutePlayer();
@@ -891,7 +295,7 @@ methodmap JailGameMode < StringMap
 		int team = teamchange ? teamchange : GetClientTeam(player.index);
 		bool ismute = player.bIsMuted;
 
-		if (team <= 1)	// If player is in spec or unassigned, assume red team rules of muting
+		if (team <= 1)	// If player is in spec, assume red team rules of muting
 			team = RED;
 
 		switch (type)
@@ -919,6 +323,13 @@ methodmap JailGameMode < StringMap
 
 		if (s[0] != '\0')
 			CPrintToChat(player.index, "%t %t", "Plugin Tag", s);
+	}
+
+	public void RecalcMuting()
+	{
+		for (int i = MaxClients; i; --i)
+			if (IsClientInGame(i))
+				this.ToggleMuting(JailFighter(i));
 	}
 
 	/**
@@ -971,6 +382,9 @@ methodmap JailGameMode < StringMap
 	*/
 	public bool SetWardenLock(const bool status, bool unsetwarden = false)
 	{
+		if (this.bIsWardenLocked == status)
+			return true;
+
 		if (Call_OnSetWardenLock(status) != Plugin_Continue)
 			return false;
 
@@ -997,8 +411,8 @@ methodmap JailGameMode < StringMap
 
 		int immunity = cvarTF2Jail[AutobalanceImmunity].IntValue;
 		float balance = cvarTF2Jail[BalanceRatio].FloatValue;
-		float lBlue = float( GetLivingPlayers(BLU) );
-		float lRed = float( GetLivingPlayers(RED) );
+		float lBlue = float(GetLivingPlayers(BLU));
+		float lRed = float(GetLivingPlayers(RED));
 		JailFighter player;
 
 		float ratio;
@@ -1026,7 +440,7 @@ methodmap JailGameMode < StringMap
 				--lBlue;	// Avoid loopception
 				++lRed;
 			}
-		} while ++tries < 50;	// Plenty
+		}	while ++tries < 50;	// Plenty
 	}
 
 	/**
@@ -1055,9 +469,6 @@ methodmap JailGameMode < StringMap
 			if (val <= 1)
 				break;
 
-			if (tries > 50)
-				break;
-
 			player = JailFighter(GetRandomPlayer(countred > countblu ? RED : BLU, true));
 
 			if (player.index == -1)
@@ -1073,6 +484,79 @@ methodmap JailGameMode < StringMap
 			player.ForceTeamChange(countred > countblu ? BLU : RED);
 			if (announce)
 				CPrintToChat(player.index, "%t %t", "Plugin Tag", "Autobalanced");
-		} while ++tries <= 50;
+		}	while ++tries <= 50;
+	}
+
+	// I'd like for these to be cached, but there's just no point
+	public KeyValues GetKv(int cfgtype)
+	{
+		if (!(0 <= cfgtype < CFG_LENGTH) || strConfig[cfgtype][0] == '\0')
+			return null;
+
+		KeyValues kv = new KeyValues(strKVConfig[cfgtype]);
+		if (!kv.ImportFromFile(strConfig[cfgtype]))
+			delete kv;
+		return kv;
+	}
+
+	public KeyValues GetMapKv()
+	{
+		KeyValues kv = this.GetKv(CFG_MAP);
+		if (kv == null)
+			return null;
+
+		char map[64]; GetCurrentMap(map, sizeof(map));
+		if (!kv.JumpToKey(map))
+			delete kv;
+		return kv;
+	}
+
+	public KeyValues GetMapKvSection(const char[] name, bool create = false)
+	{
+		KeyValues kv = this.GetMapKv();
+		if (kv == null)
+			return null;
+
+		if (!kv.JumpToKey(name, create))
+			delete kv;
+		return kv;
+	}
+
+	public JailFighter FindRandomWarden()
+	{
+		JailFighter[] players = new JailFighter[MaxClients];
+		JailFighter player;
+		int count;
+		for (int i = MaxClients; i; --i)
+		{
+			if (!IsClientInGame(i) || !IsPlayerAlive(i))
+				continue;
+
+			if (GetClientTeam(i) != BLU)
+				continue;
+
+			player = JailFighter(i);
+			if (player.bLockedFromWarden)
+				continue;
+
+			// Account for the teambans plugin
+			if (player.GetProp("bIsWardenBanned"))
+				continue;
+
+			players[count++] = player;
+		}
+		if (!count)
+			return view_as< JailFighter >(0);
+
+		player = players[GetRandomInt(0, count-1)];
+		if (!IsClientValid(player.index))
+			return view_as< JailFighter >(0);
+
+		return player.WardenSet() ? player : view_as< JailFighter >(0);
+	}
+
+	public void UpdateLRHud(const char[] name)
+	{
+		ManageLRHud(name);
 	}
 };

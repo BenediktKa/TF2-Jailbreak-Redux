@@ -1,45 +1,146 @@
+enum struct TextNodeParam
+{	// Hud Text Parameters
+	float fCoord_X;
+	float fCoord_Y;
+	float fHoldTime;
+	int iRed;
+	int iBlue;
+	int iGreen;
+	int iAlpha;
+	int iEffect;
+	float fFXTime;
+	float fFadeIn;
+	float fFadeOut;
+	Handle hHud;
+
+	void Display(const char[] text)
+	{
+		SetHudTextParams(this.fCoord_X, this.fCoord_Y, this.fHoldTime, this.iRed, this.iGreen, this.iBlue, this.iAlpha, this.iEffect, this.fFXTime, this.fFadeIn, this.fFadeOut);
+
+		for (int i = MaxClients; i; --i)
+			if (IsClientInGame(i))
+				ShowSyncHudText(i, this.hHud, text);
+	}
+}
+
+enum struct TargetFilter
+{	// Custom target filters allocated by config
+	float vecLoc[3];
+	float flDist;
+	bool bML;
+	char strDescriptN[64];
+	char strDescriptA[64];
+	char strName[32];	// If you have a filter > 32 chars then you got some serious problems
+}
+
+enum struct JailRole
+{
+	int iColor[4];
+	float flOffset;
+	char strParticle[64];
+	char strAttachment[64];
+
+	void Reset()
+	{
+		this.iColor[0] = this.iColor[1] = this.iColor[2] = this.iColor[3] = 255;
+		this.flOffset = 0.0;
+		this.strParticle[0] = '\0';
+		this.strAttachment[0] = '\0';
+	}
+
+	void Create(KeyValues kv, const char[] role)
+	{
+		this.Reset();
+		if (!kv.JumpToKey(role))
+			return;
+
+		kv.GetColor4("Color", this.iColor);
+		kv.GetString("Particle", this.strParticle, 64);
+		this.flOffset = kv.GetFloat("Offset", 0.0);
+		kv.GetString("Attachment", this.strAttachment, 64);
+		kv.GoBack();
+	}
+}
+
 char
-	strCustomLR[64],						// Used for formatting the player custom lr on say hook
 	strBackgroundSong[PLATFORM_MAX_PATH],	// Background song
 	strCellNames[32],						// Names of Cells
 	strCellOpener[32],						// Cell button
 	strFFButton[32],						// FF button
-	strRebelParticles[64],					// Rebel particles
-	strFreedayParticles[64],				// Freeday particles
-	strWardenParticles[64]					// Warden particles
+	strConfig[CFG_LENGTH][256]				// Path to config files
 ;
 
+// KeyValues name for config
+char strKVConfig[CFG_LENGTH][64] = {
+	"TF2Jail_LastRequests",
+	"TF2Jail_MapConfig",
+	"TF2Jail_RoleRenders",
+	"TF2Jail_Nodes",
+	"WardenMenu"
+};
+
 int
-	EnumTNPS[4][eTextNodeParams],			// Hud params
 	iHalo,									// Particle
 	iLaserBeam,								// Particle
-	iHalo2,									// Particle
-	iHHHParticle[MAX_TF_PLAYERS][3],		// HHH particles
-	iRebelColors[4], 						// Rebel colors
-	iFreedayColors[4], 						// Freeday colors
-	iWardenColors[4] 						// Warden colors
+	iHalo2									// Particle
 ;
 
 float
 	vecOld[MAX_TF_PLAYERS][3],				// Freeday beam vector
 	vecFreedayPosition[3], 					// Freeday map position
 	vecWardayBlu[3], 						// Blue warday map position
-	vecWardayRed[3],						// Red warday map position
-	flRebelOffset,							// Rebel offset
-	flFreedayOffset,						// Freeday offset
-	flWardenOffset							// Warden offset
+	vecWardayRed[3]							// Red warday map position
 ;
 
 bool
 	bLate,									// Late-loaded plugin
-	bListenWarden[MAXPLAYERS+1] = {false, ...}
+#if defined _SteamWorks_Included
+	g_bSteam,								// SteamWorks enabled
+#endif
+#if defined _sourcebans_included || defined _sourcebanspp_included
+//	g_bSB,									// SourceBans enabled
+#endif
+#if defined _voiceannounce_ex_included
+//	g_bVA,									// VoiceAnnounce_Ex enabled
+#endif
+#if defined __tf_ontakedamage_included
+	g_bTFOTD,								// TFOnTakeDamage enabled
+#endif
+	g_bTF2Attribs,							// TF2Attributes enabled
+	g_bSC									// SourceComms enabled
+;
+
+TextNodeParam
+	EnumTNPS[4]								// HUD elements
+;
+
+JailRole
+	g_WardenRole,							// Warden role
+	g_FreedayRole,							// Freeday role
+	g_RebelRole,							// Rebel role
+	g_FreekillerRole						// Freekiller role
+;
+
+// If adding new cvars put them above Version in the enum in TF2Jail_Redux.sp
+ConVar
+	cvarTF2Jail[Version + 1],
+	bEnabled,
+	hEngineConVars[2]						// 0 -> mp_friendlyfire; 1 -> tf_avoidteammates_pushaway
+;
+
+Handle
+	AimHud
+;
+
+Cookie
+	MusicCookie
 ;
 
 StringMap
 	hJailFields[MAX_TF_PLAYERS]				// Get/Set
 ;
 
-methodmap JailFighter
+methodmap JailFighter < JBPlayer
 {
 	public JailFighter( const int ind )
 	{
@@ -56,316 +157,31 @@ methodmap JailFighter
 		return view_as< JailFighter >(thing);
 	}
 
-	property int index
-	{
-		public get()				{ return view_as< int >(this); }
-	}
-	property int userid
-	{
-		public get()				{ return GetClientUserId(view_as< int >(this)); }
-	}
-
 	property StringMap hMap
 	{
 		public get()				{ return hJailFields[view_as< int >(this)]; }
 	}
 
-	property int iCustom
-	{
-		public get()
-		{
-			int i; hJailFields[this.index].GetValue("iCustom", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			hJailFields[this.index].SetValue("iCustom", i);
-		}
-	}
-	property int iKillCount
-	{
-		public get()
-		{
-			int i; hJailFields[this.index].GetValue("iKillCount", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			hJailFields[this.index].SetValue("iKillCount", i);
-		}
-	}
-	property int iRebelParticle
-	{
-		public get()
-		{
-			int i; hJailFields[this.index].GetValue("iRebelParticle", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			hJailFields[this.index].SetValue("iRebelParticle", i);
-		}
-	}
-	property int iFreedayParticle
-	{
-		public get()
-		{
-			int i; hJailFields[this.index].GetValue("iFreedayParticle", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			hJailFields[this.index].SetValue("iFreedayParticle", i);
-		}
-	}
-	property int iWardenParticle
-	{
-		public get()
-		{
-			int i; hJailFields[this.index].GetValue("iWardenParticle", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			hJailFields[this.index].SetValue("iWardenParticle", i);
-		}
-	}
-	property int iHealth
-	{
-		public get()
-		{
-			int i; hJailFields[this.index].GetValue("iHealth", i);
-			return i;
-		}
-		public set( const int i )
-		{
-			hJailFields[this.index].SetValue("iHealth", i);
-		}
-	}
-
-	property bool bIsWarden
-	{
-		public get()
-		{
-			bool i; hJailFields[this.index].GetValue("bIsWarden", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			hJailFields[this.index].SetValue("bIsWarden", i);
-		}
-	}
-	property bool bIsMuted
-	{
-		public get()
-		{
-			bool i; hJailFields[this.index].GetValue("bIsMuted", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			hJailFields[this.index].SetValue("bIsMuted", i);
-		}
-	}
-	property bool bIsQueuedFreeday
-	{
-		public get()
-		{
-			bool i; hJailFields[this.index].GetValue("bIsQueuedFreeday", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			hJailFields[this.index].SetValue("bIsQueuedFreeday", i);
-		}
-	}
-	property bool bIsFreeday
-	{
-		public get()
-		{
-			bool i; hJailFields[this.index].GetValue("bIsFreeday", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			hJailFields[this.index].SetValue("bIsFreeday", i);
-		}
-	}
-	property bool bLockedFromWarden
-	{
-		public get()
-		{
-			bool i; hJailFields[this.index].GetValue("bLockedFromWarden", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			hJailFields[this.index].SetValue("bLockedFromWarden", i);
-		}
-	}
-	property bool bIsVIP
-	{
-		public get()
-		{
-			bool i; hJailFields[this.index].GetValue("bIsVIP", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			hJailFields[this.index].SetValue("bIsVIP", i);
-		}
-	}
-	property bool bIsAdmin
-	{
-		public get()
-		{
-			bool i; hJailFields[this.index].GetValue("bIsAdmin", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			hJailFields[this.index].SetValue("bIsAdmin", i);
-		}
-	}
-	property bool bIsHHH
-	{
-		public get()
-		{
-			bool i; hJailFields[this.index].GetValue("bIsHHH", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			hJailFields[this.index].SetValue("bIsHHH", i);
-		}
-	}
-	property bool bInJump
-	{
-		public get()
-		{
-			bool i; hJailFields[this.index].GetValue("bInJump", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			hJailFields[this.index].SetValue("bInJump", i);
-		}
-	}
-	property bool bUnableToTeleport
-	{
-		public get()
-		{
-			bool i; hJailFields[this.index].GetValue("bUnableToTeleport", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			hJailFields[this.index].SetValue("bUnableToTeleport", i);
-		}
-	}
-	property bool bLasering
-	{
-		public get()
-		{
-			bool i; hJailFields[this.index].GetValue("bLasering", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			hJailFields[this.index].SetValue("bLasering", i);
-		}
-	}
-	property bool bVoted
-	{
-		public get()
-		{
-			bool i; hJailFields[this.index].GetValue("bVoted", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			hJailFields[this.index].SetValue("bVoted", i);
-		}
-	}
-	property bool bIsRebel
-	{
-		public get()
-		{
-			bool i; hJailFields[this.index].GetValue("bIsRebel", i);
-			return i;
-		}
-		public set( const bool i )
-		{
-			hJailFields[this.index].SetValue("bIsRebel", i);
-		}
-	}
 	property bool bNoMusic
 	{
 		public get()
 		{
 			if (!AreClientCookiesCached(this.index))
 				return false;
+
 			char strMusic[4];
-			GetClientCookie(this.index, MusicCookie, strMusic, sizeof(strMusic));
-			return (StringToInt(strMusic) == 1);
+			MusicCookie.Get(this.index, strMusic, sizeof(strMusic));
+			return !!StringToInt(strMusic);
 		}
 		public set( const bool i )
 		{
 			if (!AreClientCookiesCached(this.index))
 				return;
-			int value = (i ? 1 : 0);
+
 			char strMusic[4];
-			IntToString(value, strMusic, sizeof(strMusic));
-			SetClientCookie(this.index, MusicCookie, strMusic);
+			IntToString(i, strMusic, sizeof(strMusic));
+			MusicCookie.Set(this.index, strMusic);
 		}
-	}
-
-	property float flSpeed
-	{
-		public get()
-		{
-			float i; hJailFields[this.index].GetValue("flSpeed", i);
-			return i;
-		}
-		public set( const float i )
-		{
-			hJailFields[this.index].SetValue("flSpeed", i);
-		}
-	}
-	property float flKillingSpree
-	{
-		public get()
-		{
-			float i; hJailFields[this.index].GetValue("flKillingSpree", i);
-			return i;
-		}
-		public set( const float i )
-		{
-			hJailFields[this.index].SetValue("flKillingSpree", i);
-		}
-	}
-	property float flHealTime
-	{
-		public get()
-		{
-			float i; hJailFields[this.index].GetValue("flHealTime", i);
-			return i;
-		}
-		public set( const float i )
-		{
-			hJailFields[this.index].SetValue("flHealTime", i);
-		}
-	}
-
-	public any GetProperty(const char[] key)
-	{
-		any val; this.hMap.GetValue(key, val);
-		return val;
-	}
-
-	public void SetProperty(const char[] key, any val)
-	{
-		this.hMap.SetValue(key, val);
 	}
 
 	/**
@@ -436,7 +252,7 @@ methodmap JailFighter
 		for (int i = 0; i < 5; i++) 
 		{
 			entity = GetPlayerWeaponSlot(this.index, i); 
-			if (IsValidEdict(entity) && IsValidEntity(entity))
+			if (IsValidEntity(entity))
 			{
 				if (transparent > 255)
 					transparent = 255;
@@ -474,6 +290,9 @@ methodmap JailFighter
 		ArrayList hArray = new ArrayList();
 		while ((iEnt = FindEntityByClassname(iEnt, "info_player_teamspawn")) != -1)
 		{
+			if (GetEntProp(iEnt, Prop_Data, "m_bDisabled"))
+				continue;
+
 			if (team <= 1)
 				hArray.Push(iEnt);
 			else if (GetEntProp(iEnt, Prop_Send, "m_iTeamNum") == team)
@@ -586,22 +405,18 @@ methodmap JailFighter
 		this.bIsQueuedFreeday = false;
 		this.bIsFreeday = true;
 
-		if (cvarTF2Jail[RendererParticles].BoolValue && strFreedayParticles[0] != '\0')
+		if (cvarTF2Jail[RendererParticles].BoolValue && g_FreedayRole.strParticle[0] != '\0')
 		{
-			if (this.iFreedayParticle != -1)
-			{
-				int old = EntRefToEntIndex(this.iFreedayParticle);
-				if (IsValidEntity(old))
-					RemoveEntity(old);
-			}
+			if (this.iFreedayParticle && IsValidEntity(this.iFreedayParticle))
+				RemoveEntity(this.iFreedayParticle);
 
-			this.iFreedayParticle = AttachParticle(this.index, strFreedayParticles, _, flFreedayOffset);
-			if (cvarTF2Jail[HideParticles].BoolValue)
-				SDKHook(EntRefToEntIndex(this.iFreedayParticle), SDKHook_SetTransmit, OnParticleTransmit);
+			this.iFreedayParticle = AttachParticle(this.index, g_FreedayRole.strParticle, _, g_FreedayRole.flOffset, _, g_FreedayRole.strAttachment);
+//			if (cvarTF2Jail[HideParticles].BoolValue)
+//				SDKHook(EntRefToEntIndex(this.iFreedayParticle), SDKHook_SetTransmit, OnParticleTransmit);
 		}
 
 		if (cvarTF2Jail[RendererColor].BoolValue)
-			SetEntityRenderColor(this.index, iFreedayColors[0], iFreedayColors[1], iFreedayColors[2], iFreedayColors[3]);
+			SetEntityRenderColor(this.index, g_FreedayRole.iColor[0], g_FreedayRole.iColor[1], g_FreedayRole.iColor[2], g_FreedayRole.iColor[3]);
 
 		Call_OnFreedayGiven(this);
 	}
@@ -617,14 +432,10 @@ methodmap JailFighter
 		SetEntityFlags(client, flags);
 		this.bIsFreeday = false;
 
-		if (this.iFreedayParticle != -1)
-		{
-			int old = EntRefToEntIndex(this.iFreedayParticle);
-			if (IsValidEntity(old))
-				RemoveEntity(old);
+		if (this.iFreedayParticle && IsValidEntity(this.iFreedayParticle))
+			RemoveEntity(this.iFreedayParticle);
 
-			this.iFreedayParticle = -1;
-		}
+		this.iFreedayParticle = -1;
 
 		if (cvarTF2Jail[RendererColor].BoolValue)
 			SetEntityRenderColor(this.index);
@@ -662,35 +473,28 @@ methodmap JailFighter
 		if (!IsClientValid(client))
 			return;
 
-		int weapon, clip;
-		static int offset;
-		if (offset <= 0)
-			offset = FindSendPropInfo("CTFPlayer", "m_iAmmo");
-
-		for (int i = 0; i < 2; ++i)
+		int weapon;
+		// Thx Mr. Panica
+		int length = GetEntPropArraySize(client, Prop_Send, "m_hMyWeapons");
+		for (int i = 0; i < length; ++i)
 		{
-			weapon = GetPlayerWeaponSlot(client, i);
+			weapon = GetEntPropEnt(client, Prop_Send, "m_hMyWeapons", i);
+			if (weapon != -1)
+			{
+				if (GetEntProp(weapon, Prop_Data, "m_iClip1") != -1)
+					SetEntProp(weapon, Prop_Send, "m_iClip1", 0);
 
-			if (!IsValidEntity(weapon))
-				continue;
+				if (GetEntProp(weapon, Prop_Data, "m_iClip2") != -1)
+					SetEntProp(weapon, Prop_Send, "m_iClip2", 0);
 
-			clip = GetEntProp(weapon, Prop_Data, "m_iClip1");
-			if (clip != -1)
-				SetEntProp(weapon, Prop_Send, "m_iClip1", 0);
-
-			clip = GetEntProp(weapon, Prop_Data, "m_iClip2");
-			if (clip != -1)
-				SetEntProp(weapon, Prop_Send, "m_iClip2", 0);
-
-			if (offset > 0)
-				SetEntData(client, GetEntProp(weapon, Prop_Send, "m_iPrimaryAmmoType", 1)*4+offset, 0, 4, true);	// Mutually assured destruction
+				SetWeaponAmmo(weapon, 0);
+			}
 		}
 
 		SetEntProp(client, Prop_Send, "m_iAmmo", 0, 4, 3);
 
-		char sClassName[64];
 		int wep = GetPlayerWeaponSlot(client, TFWeaponSlot_Melee);
-		if (wep > MaxClients && IsValidEdict(wep) && GetEdictClassname(wep, sClassName, sizeof(sClassName)))
+		if (wep != -1)
 			SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", wep);
 	}
 	/**	Props to VoIDed
@@ -711,13 +515,16 @@ methodmap JailFighter
 	*/
 	public bool WardenSet()
 	{
+		if (JBGameMode_GetProp("bWardenExists"))
+			return false;
+
+		if (JBGameMode_GetProp("bIsWardenLocked"))
+			return false;
+
+		if (GetClientTeam(this.index) != BLU)
+			return false;
+
 		if (Call_OnWardenGet(this) != Plugin_Continue)
-			return false;
-
-		if (JBGameMode_GetProperty("bWardenExists"))
-			return false;
-
-		if (JBGameMode_GetProperty("bIsWardenLocked"))
 			return false;
 
 		this.bIsWarden = true;	
@@ -725,19 +532,31 @@ methodmap JailFighter
 
 		char strWarden[64];
 		int client = this.index;
-		Format(strWarden, sizeof(strWarden), "%t", "New Warden Center", client);
-		SetTextNode(hTextNodes[2], strWarden, EnumTNPS[2][fCoord_X], EnumTNPS[2][fCoord_Y], EnumTNPS[2][fHoldTime], EnumTNPS[2][iRed], EnumTNPS[2][iGreen], EnumTNPS[2][iBlue], EnumTNPS[2][iAlpha], EnumTNPS[2][iEffect], EnumTNPS[2][fFXTime], EnumTNPS[2][fFadeIn], EnumTNPS[2][fFadeOut]);
+		FormatEx(strWarden, sizeof(strWarden), "%t", "New Warden Center", client);
+		if (EnumTNPS[2].hHud != null)
+			EnumTNPS[2].Display(strWarden);
 		CPrintToChatAll("%t %t.", "Plugin Tag", "New Warden", client);
 
-		float annot = cvarTF2Jail[WardenAnnotation].FloatValue;
-		if (annot != 0.0)
+		float annottime = cvarTF2Jail[WardenAnnotation].FloatValue;
+		if (annottime != 0.0)
 		{
 			Event event = CreateEvent("show_annotation");
 			if (event)
 			{
+				int annot = CreateEntityByName("training_annotation");
+
+				DispatchKeyValueFloat(annot, "lifetime", annottime);
+				float origin[3]; GetClientAbsOrigin(client, origin);
+				DispatchKeyValueVector(annot, "origin", origin);
+				DispatchSpawn(annot);
+				event.SetInt("index", view_as< int >(GetEntityAddress(annot)));
+				SetPawnTimer(RemoveEnt, annottime, EntIndexToEntRef(annot));		// It's lifetime should kill it but w/e
+
 				event.SetInt("follow_entindex", client);
-				event.SetFloat("lifetime", annot);
-				event.SetString("text", "Warden");
+				event.SetFloat("lifetime", annottime);
+
+				FormatEx(strWarden, sizeof(strWarden), "%t", "Warden");
+				event.SetString("text", strWarden);
 
 				int bits, i;
 				for (i = MaxClients; i; --i)
@@ -749,28 +568,21 @@ methodmap JailFighter
 			}
 		}
 
-		if (cvarTF2Jail[RendererParticles].BoolValue && strWardenParticles[0] != '\0')
+		if (cvarTF2Jail[RendererParticles].BoolValue && g_WardenRole.strParticle[0] != '\0')
 		{
-			if (this.iWardenParticle != -1)
-			{
-				int old = EntRefToEntIndex(this.iWardenParticle);
-				if (IsValidEntity(old))
-					RemoveEntity(old);
-			}
+			if (this.iWardenParticle && IsValidEntity(this.iWardenParticle))
+				RemoveEntity(this.iWardenParticle);
 
-			this.iWardenParticle = AttachParticle(this.index, strWardenParticles, _, flWardenOffset);
-			if (cvarTF2Jail[HideParticles].BoolValue)
-				SDKHook(EntRefToEntIndex(this.iWardenParticle), SDKHook_SetTransmit, OnParticleTransmit);
+			this.iWardenParticle = AttachParticle(this.index, g_WardenRole.strParticle, _, g_WardenRole.flOffset, _, g_WardenRole.strAttachment);
+//			if (cvarTF2Jail[HideParticles].BoolValue)
+//				SDKHook(EntRefToEntIndex(this.iWardenParticle), SDKHook_SetTransmit, OnParticleTransmit);
 		}
 
 		if (cvarTF2Jail[RendererColor].BoolValue)
-			SetEntityRenderColor(this.index, iWardenColors[0], iWardenColors[1], iWardenColors[2], iWardenColors[3]);
+			SetEntityRenderColor(this.index, g_WardenRole.iColor[0], g_WardenRole.iColor[1], g_WardenRole.iColor[2], g_WardenRole.iColor[3]);
 
 		ManageWarden(this);
-		for (int i = 0; i <= MaxClients; i++)
-		{
-			ListenWarden(i);
-		}
+		Call_OnWardenGetPost(this);
 		return true;
 	}
 	/**
@@ -786,35 +598,35 @@ methodmap JailFighter
 		if (!this.bIsWarden)
 			return false;
 
-		if (hTextNodes[2])
+		if (EnumTNPS[2].hHud != null)
 			for (int i = MaxClients; i; --i)
 				if (IsClientInGame(i))
-					ClearSyncHud(i, hTextNodes[2]);
+					ClearSyncHud(i, EnumTNPS[2].hHud);
 
 		this.bIsWarden = false;
 		this.bLasering = false;
 		this.SetCustomModel("");
-		JBGameMode_SetProperty("iWarden", 0);
-		JBGameMode_SetProperty("bWardenExists", false);
+		JBGameMode_SetProp("iWarden", 0);
+		JBGameMode_SetProp("bWardenExists", false);
 
-		if (JBGameMode_GetProperty("iRoundState") == StateRunning)
+		if (JBGameMode_GetProp("iRoundState") == StateRunning)
 		{
 			float time = cvarTF2Jail[WardenTimer].FloatValue;
 			if (time != 0.0)
-				SetPawnTimer(DisableWarden, time, JBGameMode_GetProperty("iRoundCount"));
+				SetPawnTimer(DisableWarden, time, JBGameMode_GetProp("iRoundCount"));
 		}
 
-		if (this.iWardenParticle != -1)
-		{
-			int old = EntRefToEntIndex(this.iWardenParticle);
-			if (IsValidEntity(old))
-				RemoveEntity(old);
+		if (this.iWardenParticle && IsValidEntity(this.iWardenParticle))
+			RemoveEntity(this.iWardenParticle);
 
-			this.iWardenParticle = -1;
-		}
+		this.iWardenParticle = -1;
 
 		if (cvarTF2Jail[RendererColor].BoolValue)
 			SetEntityRenderColor(this.index);
+
+		LastRequest lr = JBGameMode_GetCurrentLR();
+		if (lr != null && lr.KillWeapons_Warden())
+			TF2_RemoveCondition(this.index, TFCond_RestrictToMelee);	// This'll do, removed when warden is lost
 
 		Call_OnWardenRemoved(this);
 		return true;
@@ -828,87 +640,17 @@ methodmap JailFighter
 	{
 		int client = this.index;
 		TF2_RemovePlayerDisguise(client);
-		int ent = -1;
-		while ((ent = FindEntityByClassname(ent, "tf_wearable*")) != -1)
+		int wearable;
+
+		for (int i = TF2_GetNumWearables(client)-1; i >= 0; --i)
 		{
-			if (GetOwner(ent) == client)
-			{
-				TF2_RemoveWearable(client, ent);
-				AcceptEntityInput(ent, "Kill");
-			}
+			wearable = TF2_GetWearable(client, i);
+			if (wearable != -1)
+				TF2_RemoveWearable(client, wearable);
 		}
-		ent = -1;
-		while ((ent = FindEntityByClassname(ent, "tf_powerup_bottle")) != -1)
-		{
-			if (GetOwner(ent) == client)
-			{
-				TF2_RemoveWearable(client, ent);
-				AcceptEntityInput(ent, "Kill");
-			}
-		}
+
 		if (weps)
 			TF2_RemoveAllWeapons(client);
-	}
-	/**
-	 *	Convert a player into the Horseless Headless Horsemann.
-	 *
-	 *	@noreturn
-	*/
-	public void MakeHorsemann()
-	{
-		int client = this.index;
-
-		int ragdoll = GetEntPropEnt(client, Prop_Send, "m_hRagdoll");
-		if (ragdoll > MaxClients && IsValidEntity(ragdoll)) 
-			AcceptEntityInput(ragdoll, "Kill");
-		char weaponname[32];
-		GetClientWeapon(client, weaponname, sizeof(weaponname));
-		if (!strcmp(weaponname, "tf_weapon_minigun", false)) 
-		{
-			SetEntProp(GetPlayerWeaponSlot(client, 0), Prop_Send, "m_iWeaponState", 0);
-			TF2_RemoveCondition(client, TFCond_Slowed);
-		}
-		//TF2_SwitchtoSlot(client, TFWeaponSlot_Melee);
-		this.PreEquip();
-		this.SpawnWeapon("tf_weapon_sword", 266, 100, 5, "264 ; 1.75 ; 263 ; 1.3 ; 15 ; 0 ; 2 ; 3.1 ; 107 ; 4.0 ; 109 ; 0.0 ; 68 ; -2 ; 53 ; 1.0 ; 27 ; 1.0");
-
-		char sClassName[64];
-		int wep = GetPlayerWeaponSlot(client, TFWeaponSlot_Melee);
-		if (wep > MaxClients && IsValidEdict(wep) && GetEdictClassname(wep, sClassName, sizeof(sClassName)))
-			SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", wep);
-
-		this.SetCustomModel("models/bots/headless_hatman.mdl");
-		SetEntProp(client, Prop_Send, "m_bUseClassAnimations", 1);
-		SetEntPropFloat(client, Prop_Send, "m_flModelScale", 1.25);
-		SetEntProp(wep, Prop_Send, "m_iWorldModelIndex", PrecacheModel("models/weapons/c_models/c_bigaxe/c_bigaxe.mdl"));
-		SetEntProp(wep, Prop_Send, "m_nModelIndexOverrides", PrecacheModel("models/weapons/c_models/c_bigaxe/c_bigaxe.mdl"), _, 0);
-
-		SetVariantInt(1);
-		AcceptEntityInput(client, "SetForcedTauntCam");
-
-		SetEntProp(client, Prop_Send, "m_iHealth", 1500);
-		DoHorsemannParticles(client);
-		this.bIsHHH = true;
-	}
-	/**
-	 *	Terminate a player as the Horseless Headless Horsemann.
-	 *
-	 *	@noreturn
-	*/
-	public void UnHorsemann()
-	{
-		int client = this.index;
-
-		SetVariantString("");
-		AcceptEntityInput(client, "SetCustomModel");
-		SetEntPropFloat(client, Prop_Data, "m_flModelScale", 1.0);
-		SetVariantInt(0);
-		AcceptEntityInput(client, "SetForcedTauntCam");
-		ClearHorsemannParticles(client);
-
-		if (IsPlayerAlive(client))
-			ResetPlayer(client);
-		this.bIsHHH = false;
 	}
 	/**
 	 *	Teleport a player either to a freeday or warday location.
@@ -922,9 +664,9 @@ methodmap JailFighter
 	{
 		switch (location)
 		{
-			case 1:if (JBGameMode_GetProperty("bFreedayTeleportSet")) { TeleportEntity(this.index, vecFreedayPosition, NULL_VECTOR, NULL_VECTOR); return true; }
-			case 2:if (JBGameMode_GetProperty("bWardayTeleportSetRed")) { TeleportEntity(this.index, vecWardayRed, NULL_VECTOR, NULL_VECTOR); return true; }
-			case 3:if (JBGameMode_GetProperty("bWardayTeleportSetBlue")) { TeleportEntity(this.index, vecWardayBlu, NULL_VECTOR, NULL_VECTOR); return true; }
+			case 1:if (JBGameMode_GetProp("bFreedayTeleportSet")) { TeleportEntity(this.index, vecFreedayPosition, NULL_VECTOR, NULL_VECTOR); return true; }
+			case 2:if (JBGameMode_GetProp("bWardayTeleportSetRed")) { TeleportEntity(this.index, vecWardayRed, NULL_VECTOR, NULL_VECTOR); return true; }
+			case 3:if (JBGameMode_GetProp("bWardayTeleportSetBlue")) { TeleportEntity(this.index, vecWardayBlu, NULL_VECTOR, NULL_VECTOR); return true; }
 		}
 		return false;
 	}
@@ -938,15 +680,14 @@ methodmap JailFighter
 		if (IsVoteInProgress())
 			return;
 
-		Menu menu = new Menu(ListLRsMenu);
-		menu.AddItem("-1", "Random LR");
-		AddLRsToMenu(menu);
+		Menu menu = new Menu(LRMenuHandler, MENU_ACTIONS_DEFAULT|MenuAction_Display);
+		AddLRsToMenu(this, menu);
 		menu.Display(this.index, 0);
 
 		Call_OnLRGiven(this);
 		int time = cvarTF2Jail[LRTimer].IntValue;
-		if (time/* && JBGameMode_GetProperty("iTimeLeft") > time*/)
-			JBGameMode_SetProperty("iTimeLeft", time);
+		if (time/* && JBGameMode_GetProp("iTimeLeft") > time*/)
+			JBGameMode_SetProp("iTimeLeft", time);
 	}
 	/**
 	 *	Give a player the warden menu.
@@ -958,7 +699,7 @@ methodmap JailFighter
 		if (IsVoteInProgress())
 			return;
 
-		view_as< Menu >(JBGameMode_GetProperty("hWardenMenu")).Display(this.index, 0);		// Absolutely disgusting
+		view_as< Menu >(JBGameMode_GetProp("hWardenMenu")).Display(this.index, 0);		// Absolutely disgusting
 	}
 	/**
 	 *	Allow a player to climb walls upon hitting them.
@@ -1027,8 +768,8 @@ methodmap JailFighter
 	*/
 	public void AttemptFireWarden()
 	{
-		int votes = JBGameMode_GetProperty("iVotes");
-		int total = JBGameMode_GetProperty("iVotesNeeded");
+		int votes = JBGameMode_GetProp("iVotes");
+		int total = JBGameMode_GetProp("iVotesNeeded");
 		if (this.bVoted)
 		{
 			CPrintToChat(this.index, "%t %t", "Plugin Tag", "Fire Warden Already Voted", votes, total);
@@ -1037,7 +778,7 @@ methodmap JailFighter
 
 		this.bVoted = true;
 		++votes;
-		JBGameMode_SetProperty("iVotes", votes);
+		JBGameMode_SetProp("iVotes", votes);
 		CPrintToChatAll("%t %t", "Plugin Tag", "Fire Warden Requested", this.index, votes, total);
 
 		if (votes >= total)
@@ -1050,44 +791,53 @@ methodmap JailFighter
 	*/
 	public void MarkRebel()
 	{
-		if (this.bIsRebel || !IsPlayerAlive(this.index) || GetClientTeam(this.index) != RED)
+		if (!IsPlayerAlive(this.index) || GetClientTeam(this.index) != RED)
 			return;
+
+		if (this.bIsRebel)
+		{
+			float time = cvarTF2Jail[RebelTime].FloatValue;
+			if (time != 0.0)
+			{
+				Handle h = this.hRebelTimer;
+				KillTimerSafe(h);	// What the fuck
+				this.hRebelTimer = CreateTimer(time, Timer_ClearRebel, this.userid, TIMER_FLAG_NO_MAPCHANGE);
+			}
+			return;
+		}
 
 		if (!cvarTF2Jail[Rebellers].BoolValue)
 			return;
 
-		if (JBGameMode_GetProperty("bIgnoreRebels"))
+		if (JBGameMode_GetProp("bIgnoreRebels"))
 			return;
 
 		if (Call_OnRebelGiven(this) != Plugin_Continue)
 			return;
 
 		this.bIsRebel = true;
-		if (cvarTF2Jail[RendererParticles].BoolValue && strRebelParticles[0] != '\0')
+		if (cvarTF2Jail[RendererParticles].BoolValue && g_RebelRole.strParticle[0] != '\0')
 		{
-			if (this.iRebelParticle != -1)
-			{
-				int old = EntRefToEntIndex(this.iRebelParticle);
-				if (IsValidEntity(old))
-					RemoveEntity(old);
-			}
+			if (this.iRebelParticle && IsValidEntity(this.iRebelParticle))
+				RemoveEntity(this.iRebelParticle);
 
-			this.iRebelParticle = AttachParticle(this.index, strRebelParticles, _, flRebelOffset);
-			if (cvarTF2Jail[HideParticles].BoolValue)
-				SDKHook(EntRefToEntIndex(this.iRebelParticle), SDKHook_SetTransmit, OnParticleTransmit);
+			this.iRebelParticle = AttachParticle(this.index, g_RebelRole.strParticle, _, g_RebelRole.flOffset, _, g_RebelRole.strAttachment);
+//			if (cvarTF2Jail[HideParticles].BoolValue)
+//				SDKHook(EntRefToEntIndex(this.iRebelParticle), SDKHook_SetTransmit, OnParticleTransmit);
 		}
 
 		if (cvarTF2Jail[RendererColor].BoolValue)
-			SetEntityRenderColor(this.index, iRebelColors[0], iRebelColors[1], iRebelColors[2], iRebelColors[3]);
+			SetEntityRenderColor(this.index, g_RebelRole.iColor[0], g_RebelRole.iColor[1], g_RebelRole.iColor[2], g_RebelRole.iColor[3]);
 
 		CPrintToChatAll("%t %t", "Plugin Tag", "Prisoner Has Rebelled", this.index);
 
 		float time = cvarTF2Jail[RebelTime].FloatValue;
 		if (time != 0.0)
 		{
+			this.hRebelTimer = CreateTimer(time, Timer_ClearRebel, this.userid, TIMER_FLAG_NO_MAPCHANGE);
 			CPrintToChat(this.index, "%t %t", "Plugin Tag", "Rebel Timer Start", RoundFloat(time));
-			SetPawnTimer(RemoveRebel, time, this.userid, JBGameMode_GetProperty("iRoundCount"));
 		}
+		Call_OnRebelGivenPost(this);
 	}
 	/**
 	 *	Clear a player's rebel status.
@@ -1100,20 +850,20 @@ methodmap JailFighter
 			return;
 
 		this.bIsRebel = false;
-		if (this.iRebelParticle != -1)
-		{
-			int old = EntRefToEntIndex(this.iRebelParticle);
-			if (IsValidEntity(old))
-				RemoveEntity(old);
+		if (this.iRebelParticle && IsValidEntity(this.iRebelParticle))
+			RemoveEntity(this.iRebelParticle);
 
-			this.iRebelParticle = -1;
-		}
+		this.iRebelParticle = -1;
 
 		if (cvarTF2Jail[RendererColor].BoolValue)
 			SetEntityRenderColor(this.index);
 
-		CPrintToChat(this.index, "%t %t", "Plugin Tag", "Rebel Timer Remove");
+		// What the fuck
+		Handle h = this.hRebelTimer;
+		KillTimerSafe(h);
+		this.hRebelTimer = null;
 
+		CPrintToChat(this.index, "%t %t", "Plugin Tag", "Rebel Timer Remove");
 		Call_OnRebelRemoved(this);
 	}
 
@@ -1122,7 +872,7 @@ methodmap JailFighter
 		CPrintToChatAll("%t %t", "Plugin Tag", "Warden Invite Player", this.index, other.index);
 		Menu menu = new Menu(InviteReceiveMenu);
 		menu.SetTitle("%t", "Menu Title Invited");
-		char s[16];
+		char s[32];
 
 		FormatEx(s, sizeof(s), "%t", "Join");
 		menu.AddItem("0", s);
@@ -1130,5 +880,140 @@ methodmap JailFighter
 		menu.AddItem("1", s);
 
 		menu.Display(other.index, 15);
+	}
+
+	public bool ResetFreekillerTimer()
+	{
+		if (this.bIsFreekiller)
+		{
+			float time = cvarTF2Jail[FreeKillTimer].FloatValue;
+			if (time != 0.0)
+			{
+				Handle h = this.hFreekillTimer;
+				KillTimerSafe(h);
+				this.hFreekillTimer = CreateTimer(time, Timer_ClearFreekiller, this.userid, TIMER_FLAG_NO_MAPCHANGE);
+			}
+			return true;
+		}
+		return false;
+	}
+
+	public void MarkFreekiller()
+	{
+		if (this.ResetFreekillerTimer())
+			return;
+
+		if (Call_OnMarkedFreekiller(this) != Plugin_Continue)
+			return;
+
+		int messagetype = cvarTF2Jail[FreeKillMessage].IntValue;
+		bool silent = cvarTF2Jail[FreeKillSilent].BoolValue;
+		char msg[512];
+
+		if (!silent)
+			CPrintToChatAll("%t %t", "Plugin Tag", "Marked as Freekiller", this.index);
+		else
+		{
+			for (int i = MaxClients; i; --i)
+			{
+				if (!IsClientInGame(i) || i == this.index)
+					continue;
+
+				if (!JailFighter(i).bIsAdmin)
+					continue;
+
+				CPrintToChat(i, "%t %t", "Plugin Tag", "Marked as Freekiller", this.index);
+			}
+		}
+
+		if (messagetype)
+		{
+			char ip[32]; GetClientIP(this.index, ip, sizeof(ip));
+			char steam[32]; GetClientAuthId(this.index, AuthId_Steam2, steam, sizeof(steam));
+			FormatEx(msg, sizeof(msg), 
+					"{burlywood}********************\n"
+//				...	"%t\n"
+				...	"UID: %d\n"
+				...	"Steam: %s\n"
+				... "IP: %s\n"
+				... "********************",
+//				"Freekiller Admin Message", this.index, 
+				this.userid, steam, ip);
+
+			for (int i = MaxClients; i; --i)
+			{
+				if (!IsClientInGame(i) || i == this.index)
+					continue;
+
+				if (!JailFighter(i).bIsAdmin)
+					continue;
+
+				if (messagetype & (1 << 0))		// Chat
+					CPrintToChat(i, msg);
+				if (messagetype & (1 << 1))		// Console
+				{
+					CRemoveTags(msg, sizeof(msg));
+					PrintToConsole(i, msg);
+				}
+			}
+		}
+
+		this.bIsFreekiller = true;
+		if (!silent && cvarTF2Jail[RendererParticles].BoolValue && g_FreekillerRole.strParticle[0] != '\0')
+		{
+			if (this.iFreekillerParticle && IsValidEntity(this.iFreekillerParticle))
+				RemoveEntity(this.iFreekillerParticle);
+
+			this.iFreekillerParticle = AttachParticle(this.index, g_FreekillerRole.strParticle, _, g_FreekillerRole.flOffset, _, g_FreekillerRole.strAttachment);
+		}
+
+		if (!silent && cvarTF2Jail[RendererColor].BoolValue)
+			SetEntityRenderColor(this.index, g_FreekillerRole.iColor[0], g_FreekillerRole.iColor[1], g_FreekillerRole.iColor[2], g_FreekillerRole.iColor[3]);
+
+		cvarTF2Jail[FreeKillCommand].GetString(msg, sizeof(msg));
+		if (msg[0] != '\0')
+		{
+			char s[12]; FormatEx(s, sizeof(s), "#%d", this.userid);
+			ReplaceString(msg, sizeof(msg), "{PLAYER}", s);
+			ServerCommand("%s", msg);
+		}
+
+		// Pretty sure a majority of plugins kick/ban in the next frame but just in case
+		if (IsClientValid(this.index))
+		{
+			float time = cvarTF2Jail[FreeKillTimer].FloatValue;
+			if (time != 0.0)
+			{
+				this.hFreekillTimer = CreateTimer(time, Timer_ClearFreekiller, this.userid, TIMER_FLAG_NO_MAPCHANGE);
+				if (!silent)
+					CPrintToChat(this.index, "%t %t", "Plugin Tag", "Freekiller Timer Start", RoundFloat(time));
+			}
+
+			Call_OnMarkedFreekillerPost(this);
+		}
+	}
+
+	public void ClearFreekiller()
+	{
+		if (!this.bIsFreekiller)
+			return;
+
+		this.bIsFreekiller = false;
+		if (this.iFreekillerParticle && IsValidEntity(this.iFreekillerParticle))
+			RemoveEntity(this.iFreekillerParticle);
+
+		this.iFreekillerParticle = -1;
+
+		if (cvarTF2Jail[RendererColor].BoolValue)
+			SetEntityRenderColor(this.index);
+
+		Handle h = this.hFreekillTimer;
+		KillTimerSafe(h);
+		this.hFreekillTimer = null;
+
+		if (!cvarTF2Jail[FreeKillSilent].BoolValue)
+			CPrintToChat(this.index, "%t %t", "Plugin Tag", "Freekiller Timer Remove");
+		this.flKillingSpree = 0.0;
+		Call_OnFreekillerStatusRemoved(this);
 	}
 };

@@ -4,11 +4,12 @@
 #include <tf2jailredux_teambans>
 #include <tf2jailredux>
 #include <clientprefs>
+#include <sdktools>
 
 #undef TAG
 #define TAG "{crimson}[TF2Jail] Teambans{burlywood} "
 
-#define PLUGIN_VERSION 		"1.0.3"
+#define PLUGIN_VERSION 		"1.0.5"
 #define RED 				2
 #define BLU 				3
 #define IsClientValid(%1) 	((0 < %1 <= MaxClients) && IsClientInGame(%1))
@@ -46,7 +47,7 @@ int			// Refresh RageTable every x mapchanges
 
 bool
 	bLate,
-	bDisabled	// Grrrr
+	bDisabled = true	// Grrrr
 ;
 
 ConVar
@@ -64,7 +65,7 @@ Database
 	hTheDB
 ;
 
-Handle
+GlobalForward
 	hOnBan,
 	hOnUnBan,
 	hOnOfflineBan,
@@ -94,24 +95,24 @@ methodmap JailPlayer < JBPlayer
 
 	property int iTimeLeft 
 	{
-		public get() 				{ return this.GetValue("iTimeLeft"); }
-		public set( const int i ) 	{ this.SetValue("iTimeLeft", i); }
+		public get() 				{ return this.GetProp("iTimeLeft"); }
+		public set( const int i ) 	{ this.SetProp("iTimeLeft", i); }
 	}
 	property int iWardenTimeLeft
 	{
-		public get() 				{ return this.GetValue("iWardenTimeLeft"); }
-		public set( const int i ) 	{ this.SetValue("iWardenTimeLeft", i); }
+		public get() 				{ return this.GetProp("iWardenTimeLeft"); }
+		public set( const int i ) 	{ this.SetProp("iWardenTimeLeft", i); }
 	}
 
 	property bool bIsGuardbanned
 	{
-		public get() 				{ return this.GetValue("bIsGuardbanned"); }
-		public set( const bool i ) 	{ this.SetValue("bIsGuardbanned", i); }
+		public get() 				{ return this.GetProp("bIsGuardbanned"); }
+		public set( const bool i ) 	{ this.SetProp("bIsGuardbanned", i); }
 	}
 	property bool bIsWardenBanned
 	{
-		public get() 				{ return this.GetValue("bIsWardenBanned"); }
-		public set( const bool i ) 	{ this.SetValue("bIsWardenBanned", i); }
+		public get() 				{ return this.GetProp("bIsWardenBanned"); }
+		public set( const bool i ) 	{ this.SetProp("bIsWardenBanned", i); }
 	}
 }
 
@@ -162,7 +163,7 @@ public void OnPluginStart()
 	iTableDelete = 0;
 }
 
-public void OnAllPluginsLoaded()
+public void InitSubPlugin()
 {
 	JB_Hook(OnPlayerSpawned, fwdOnPlayerSpawn);
 	JB_Hook(OnWardenGet, fwdOnWardenGet);
@@ -174,7 +175,7 @@ public void OnAllPluginsLoaded()
 */
 public void OnLibraryRemoved(const char[] name)
 {
-	if (!strcmp(name, "TF2Jail_Redux", false))
+	if (!strcmp(name, "TF2Jail_Redux", true))
 	{
 		bDisabled = bEnabled.BoolValue;
 		if (bDisabled)
@@ -189,12 +190,12 @@ public void OnLibraryRemoved(const char[] name)
 */
 public void OnLibraryAdded(const char[] name)
 {
-	if (!strcmp(name, "TF2Jail_Redux", false))
+	if (!strcmp(name, "TF2Jail_Redux", true))
 	{
 		if (bDisabled)
 		{
 			bEnabled.SetBool(true);
-			OnAllPluginsLoaded();
+			InitSubPlugin();
 		}
 	}
 }
@@ -239,7 +240,7 @@ public void OnClientPostAdminCheck(int client)
 	}
 
 	char query[256];
-	Format(query, sizeof(query), 
+	FormatEx(query, sizeof(query), 
 			"SELECT ban_time "
 		...	"FROM %s "
 		...	"WHERE steamid = '%s';",
@@ -250,7 +251,7 @@ public void OnClientPostAdminCheck(int client)
 	if (cvarJBANS[Debug].BoolValue)
 		LogMessage("Querying client %N connection with query %s", client, query);
 
-	ReplaceString(query, sizeof(query), strCoreTable, strWardenTable);
+	ReplaceStringEx(query, sizeof(query), strCoreTable, strWardenTable);
 	hTheDB.Query(CCB_Induction_Warden, query, GetClientUserId(client));
 }
 
@@ -263,8 +264,8 @@ public void fwdOnPlayerSpawn(const JBPlayer Player, Event event)
 	if (GetClientTeam(Player.index) != BLU)
 		return;
 
-	bool running = JBGameMode_GetProperty("iRoundState") == StateRunning;
-	if (cvarJBANS[IgnoreMidRound].BoolValue && running)
+	int state = JBGameMode_GetProp("iRoundState");
+	if (cvarJBANS[IgnoreMidRound].BoolValue && state == StateRunning)
 		return;
 
 	JailPlayer base = JailPlayer.Of(Player);
@@ -275,7 +276,11 @@ public void fwdOnPlayerSpawn(const JBPlayer Player, Event event)
 	char BanMsg[128]; cvarJBANS[JoinMessage].GetString(BanMsg, sizeof(BanMsg));	
 	PrintCenterText(base.index, "%t", "Guardbanned Center");
 	CPrintToChat(base.index, "%t %s", "Plugin Tag Teambans", BanMsg);
-	base.ForceTeamChange(RED, !running);
+
+	ForcePlayerSuicide(base.index);
+	ChangeClientTeam(base.index, RED);
+	if (state == StateStarting)
+		TF2_RespawnPlayer(base.index);
 }
 
 public Action fwdOnWardenGet(const JBPlayer Player)
@@ -314,7 +319,7 @@ public void OnClientDisconnect(int client)
 	else
 	{
 		char query[256];
-		Format(query, sizeof(query), 
+		FormatEx(query, sizeof(query), 
 			"SELECT ban_time"
 		...	" FROM %s"
 		...	" WHERE steamid = '%s';",
@@ -333,7 +338,7 @@ public void OnClientDisconnect(int client)
 	if (player.bIsWardenBanned)
 	{
 		char query[256];
-		Format(query, sizeof(query), 
+		FormatEx(query, sizeof(query), 
 			"SELECT ban_time"
 		...	" FROM %s"
 		...	" WHERE steamid = '%s';",
@@ -437,22 +442,20 @@ public Action Cmd_GuardBan(int client, int args)
 		return Plugin_Handled;
 	}
 
-	if (!IsFakeClient(target_list[0]))
+	if (IsFakeClient(target_list[0]))
 	{
-		if (JailPlayer(target_list[0]).bIsGuardbanned)
-			CReplyToCommand(client, "%t %t ", "Plugin Tag Teambans", "Already Guardbanned", target_list[0]);
-		else
-		{
-			char reason[256];
-			for (int i = 3; i <= args; i++)
-			{
-				GetCmdArg(i, s, sizeof(s));
-				Format(reason, sizeof(reason), "%s %s", reason, s);
-			}
-			GuardBan(target_list[0], client, time, reason);
-		}
+		CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Unable to target");
+		return Plugin_Handled;
 	}
-	else CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Unable to target");
+
+	char reason[256];
+	for (int i = 3; i <= args; i++)
+	{
+		GetCmdArg(i, s, sizeof(s));
+		Format(reason, sizeof(reason), "%s %s", reason, s);
+	}
+	GuardBan(target_list[0], client, time, reason);
+
 	return Plugin_Handled;
 }
 
@@ -484,16 +487,23 @@ public Action Cmd_IsBanned(int client, int args)
 		ReplyToTargetError(client, target_count);
 		return Plugin_Handled;
 	}
-	if (!IsFakeClient(target_list[0]))
+
+	if (IsFakeClient(target_list[0]))
 	{
-		JailPlayer player = JailPlayer(target_list[0]);
-		if (player.bIsGuardbanned)
-			if (player.iTimeLeft <= 0)
-				CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Is Guardbanned permanently", target_list[0]);
-			else CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Is Guardbanned Time Left", target_list[0], player.iTimeLeft);
-		else CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Is Not Guardbanned", target_list[0]);
+		CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Unable to Target");
+		return Plugin_Handled;
 	}
-	else CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Unable to Target");
+
+	JailPlayer player = JailPlayer(target_list[0]);
+	if (!player.bIsGuardbanned)
+	{
+		CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Is Not Guardbanned", target_list[0]);
+		return Plugin_Handled;
+	}
+
+	if (player.iTimeLeft <= 0)
+		CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Is Guardbanned permanently", target_list[0]);
+	else CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Is Guardbanned Time Left", target_list[0], player.iTimeLeft);
 	return Plugin_Handled;
 }
 
@@ -532,8 +542,8 @@ public Action Cmd_OfflineGuardBan(int client, int args)
 		return Plugin_Handled;
 	}
 
-	char ID[32]; GetCmdArgString( ID, sizeof(ID));
-
+	// TODO; allow admins to input reasons
+	char ID[32]; GetCmdArgString(ID, sizeof(ID));
 	OfflineBan(ID, client);
 	CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Offline Guardban", ID);
 
@@ -611,11 +621,15 @@ public Action Cmd_WardenBan(int client, int args)
 		return Plugin_Handled;
 	}
 
-	if (!IsFakeClient(target_list[0]))
-		if (JailPlayer(target_list[0]).bIsWardenBanned)
-			CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Already Wardenbanned", target_list[0]);
-		else WardenBan(target_list[0], client, time);
-	else CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Cannot target bot");
+	if (IsFakeClient(target_list[0]))
+	{
+		CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Cannot target bot");
+		return Plugin_Handled;
+	}
+
+	if (JailPlayer(target_list[0]).bIsWardenBanned)
+		CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Already Wardenbanned", target_list[0]);
+	else WardenBan(target_list[0], client, time);
 	return Plugin_Handled;
 }
 
@@ -654,7 +668,7 @@ public Action Cmd_OfflineWardenBan(int client, int args)
 		return Plugin_Handled;
 	}
 
-	char ID[32]; GetCmdArgString( ID, sizeof(ID));
+	char ID[32]; GetCmdArgString(ID, sizeof(ID));
 
 	OfflineWardenBan(ID, client);
 	CReplyToCommand(client, "%t %t", "Plugin Tag Teambans", "Offline Wardenban", ID);
@@ -672,7 +686,7 @@ public void OfflineBan(const char[] ID, int admin)
 	Call_PushString(ID);
 	Call_PushCell(admin);
 	Call_Finish(action);
-	if (action == Plugin_Handled || action == Plugin_Stop)	// Allow returning Plugin_Changed
+	if (action >= Plugin_Handled)	// Allow returning Plugin_Changed
 		return;
 
 	char query[512];
@@ -690,7 +704,9 @@ public void OfflineBan(const char[] ID, int admin)
 
 	int timestamp = GetTime();
 	char ID2[32]; 
-	if (admin) GetClientAuthId(admin, AuthId_Steam2, ID2, sizeof(ID2)); else ID2 = "Console";
+	if (admin)
+		GetClientAuthId(admin, AuthId_Steam2, ID2, sizeof(ID2));
+	else ID2 = "Console";
 
 	hTheDB.Format(query, sizeof(query), 
 			"INSERT INTO %s "
@@ -716,14 +732,14 @@ public void OfflineUnBan(const char[] ID, int admin)
 		return;
 
 	char query[256];
-	Format(query, sizeof(query), 
+	FormatEx(query, sizeof(query), 
 			"DELETE FROM %s "
 		...	"WHERE steamid = '%s';",
 			strCoreTable, ID);
 
 	hTheDB.Query(CCB_OfflineUnGuardBan, query);
 
-	Format(query, sizeof(query), 
+	FormatEx(query, sizeof(query), 
 			"UPDATE %s "
 		... "SET timeleft = -1 "
 		... "WHERE offender_steamid = '%s' "
@@ -765,7 +781,7 @@ public void UnGuardBan(int target, int admin)
 		CPrintToChatAll("%t Console: %t", "Plugin Tag Teambans", "Unguardban", target);
 	else CShowActivity2(admin, idk, " %t", "Unguardban", target);
 
-	Format(query, sizeof(query), 
+	FormatEx(query, sizeof(query), 
 			"DELETE FROM %s "
 		...	"WHERE steamid = '%s';",
 			strCoreTable, ID);
@@ -774,7 +790,7 @@ public void UnGuardBan(int target, int admin)
 		LogMessage("UnGuardBanning client %N. Query: %s", target, query);
 	hTheDB.Query(CCB_UnGuardBan, query);
 
-	Format(query, sizeof(query), 
+	FormatEx(query, sizeof(query), 
 			"UPDATE %s "
 		... "SET timeleft = -1 "
 		... "WHERE offender_steamid = '%s' "
@@ -791,17 +807,17 @@ void GuardBan(int victim, int admin, int time, char reason[256] = "")
 		return;
 
 	JailPlayer player = JailPlayer(victim);
-	if (player.bIsGuardbanned)
-		return;
+//	if (player.bIsGuardbanned)	// Let the ON DUPLICATE KEY statement fix this by itself
+//		return;
 
 	Action action = Plugin_Continue;
 	Call_StartForward(hOnBan);
 	Call_PushCell(victim);
 	Call_PushCell(admin);
 	Call_PushCellRef(time);
-	Call_PushStringEx(reason, sizeof(reason), 0, SM_PARAM_COPYBACK);
+	Call_PushStringEx(reason, sizeof(reason), SM_PARAM_STRING_COPY, SM_PARAM_COPYBACK);
 	Call_Finish(action);
-	if (action == Plugin_Handled || action == Plugin_Stop)
+	if (action >= Plugin_Handled)
 		return;
 
 	char ID[32], idk[64];
@@ -828,19 +844,23 @@ void GuardBan(int victim, int admin, int time, char reason[256] = "")
 
 	if (GetClientTeam(victim) == BLU)
 	{
-		if (JBGameMode_GetProperty("iRoundState") >= StateRunning)
+		if (JBGameMode_GetProp("iRoundState") == StateStarting)
+			player.ForceTeamChange(RED);
+		else
 		{
 			ForcePlayerSuicide(victim);
 			ChangeClientTeam(victim, RED);
 		}
-		else player.ForceTeamChange(RED);
 	}
 
 	if (cvarJBANS[Debug].BoolValue)
 		LogMessage("[JBANS] Querying client %N's ban with query: %s", victim, query);
 
 	int timestamp = GetTime();
-	char ID2[32]; if (admin) GetClientAuthId(admin, AuthId_Steam2, ID2, sizeof(ID2)); else ID2 = "Console";
+	char ID2[32];
+	if (admin)
+		GetClientAuthId(admin, AuthId_Steam2, ID2, sizeof(ID2));
+	else ID2 = "Console";
 
 	hTheDB.Format(query, sizeof(query),
 			"INSERT INTO %s "
@@ -868,7 +888,7 @@ public void UnWardenBan(int target, int admin)
 	Call_PushCell(target);
 	Call_PushCell(admin);
 	Call_Finish(action);
-	if (action == Plugin_Handled || action == Plugin_Stop)
+	if (action >= Plugin_Handled)
 		return;
 
 	player.bIsWardenBanned = false;
@@ -899,8 +919,8 @@ public void WardenBan(int victim, int admin, int time)
 		return;
 
 	JailPlayer player = JailPlayer(victim);
-	if (player.bIsWardenBanned)
-		return;
+//	if (player.bIsWardenBanned)
+//		return;
 
 	Action action = Plugin_Continue;
 	Call_StartForward(hOnWardenBan);
@@ -908,7 +928,7 @@ public void WardenBan(int victim, int admin, int time)
 	Call_PushCell(admin);
 	Call_PushCellRef(time);
 	Call_Finish(action);
-	if (action == Plugin_Handled || action == Plugin_Stop)
+	if (action >= Plugin_Handled)
 		return;
 
 	char ID[32], idk[64];
@@ -1233,7 +1253,7 @@ public int DBCB_Connect(Database db, const char[] error, any data)
 
 	Transaction txn = new Transaction();
 
-	Format(strCoreTable, sizeof(strCoreTable), "%stf2jr_guardbans", prefix);
+	FormatEx(strCoreTable, sizeof(strCoreTable), "%stf2jr_guardbans", prefix);
 
 	char query[512];
 	Format(query, sizeof(query), 
@@ -1245,16 +1265,16 @@ public int DBCB_Connect(Database db, const char[] error, any data)
 
 	txn.AddQuery(query);
 
-	Format(strWardenTable, sizeof(strWardenTable), "%stf2jr_wardenbans", prefix);
-	ReplaceString(query, sizeof(query), strCoreTable, strWardenTable);
+	FormatEx(strWardenTable, sizeof(strWardenTable), "%stf2jr_wardenbans", prefix);
+	ReplaceStringEx(query, sizeof(query), strCoreTable, strWardenTable);
 
 	txn.AddQuery(query);
 
 	// Let's keep webpanel compatibility shall we?
 	// Because I know one exists... somewhere...
-	Format(strLogTable, sizeof(strLogTable), "%stf2jr_guardbans_logs", prefix);
+	FormatEx(strLogTable, sizeof(strLogTable), "%stf2jr_guardbans_logs", prefix);
 
-	Format(query, sizeof(query), 
+	FormatEx(query, sizeof(query), 
 			"CREATE TABLE IF NOT EXISTS %s "
 		...	"(timestamp INT, "
 		...	"offender_steamid VARCHAR(22), "
@@ -1309,7 +1329,7 @@ public int CCB_Disconnect(Database db, DBResultSet results, const char[] error, 
 		{
 			char query[256];
 
-			Format(query, sizeof(query), 
+			FormatEx(query, sizeof(query), 
 					"UPDATE %s "
 				...	"SET ban_time = %d "
 				... "WHERE steamid = '%s';",
@@ -1317,7 +1337,7 @@ public int CCB_Disconnect(Database db, DBResultSet results, const char[] error, 
 
 			hTheDB.Query(DBCB_Disconnect, query);
 
-			Format(query, sizeof(query), 
+			FormatEx(query, sizeof(query), 
 				"UPDATE %s "
 			... "SET timeleft = %d "
 			... "WHERE offender_steamid = '%s' "
@@ -1343,7 +1363,7 @@ public int CCB_Disconnect_Warden(Database db, DBResultSet results, const char[] 
 		{
 			char query[256];
 
-			Format(query, sizeof(query), 
+			FormatEx(query, sizeof(query), 
 					"UPDATE %s "
 				...	"SET ban_time = %d "
 				... "WHERE steamid = '%s';",
@@ -1501,52 +1521,52 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	return APLRes_Success;
 }
 
-public int Native_GuardBan(Handle plugin, int numParams)
+public any Native_GuardBan(Handle plugin, int numParams)
 {
 	char reason[256]; GetNativeString(4, reason, 256);
 	GuardBan(GetNativeCell(1), GetNativeCell(2), GetNativeCell(3), reason);
 }
-public int Native_UnGuardBan(Handle plugin, int numParams)
+public any Native_UnGuardBan(Handle plugin, int numParams)
 {
 	UnGuardBan(GetNativeCell(1), GetNativeCell(2));
 }
-public int Native_OfflineGuardBan(Handle plugin, int numParams)
+public any Native_OfflineGuardBan(Handle plugin, int numParams)
 {
 	char ID[32]; GetNativeString(1, ID, sizeof(ID));
 	OfflineBan(ID, GetNativeCell(2));
 }
-public int Native_OfflineUnGuardBan(Handle plugin, int numParams)
+public any Native_OfflineUnGuardBan(Handle plugin, int numParams)
 {
 	char ID[32]; GetNativeString(1, ID, sizeof(ID));
 	OfflineUnBan(ID, GetNativeCell(2));
 }
-public int Native_RageBanMenu(Handle plugin, int numParams)
+public any Native_RageBanMenu(Handle plugin, int numParams)
 {
 	RageBanMenu(GetNativeCell(1));
 }
-public int Native_DisplayBanMenu(Handle plugin, int numParams)
+public any Native_DisplayBanMenu(Handle plugin, int numParams)
 {
 	DisplayBannableMenu(GetNativeCell(1));
 }
-public int Native_DisplayUnbanMenu(Handle plugin, int numParams)
+public any Native_DisplayUnbanMenu(Handle plugin, int numParams)
 {
 	DisplayUnbannableMenu(GetNativeCell(1));
 }
 
-public int Native_WardenBan(Handle plugin, int numParams)
+public any Native_WardenBan(Handle plugin, int numParams)
 {
 	WardenBan(GetNativeCell(1), GetNativeCell(2), GetNativeCell(3));
 }
-public int Native_UnWardenBan(Handle plugin, int numParams)
+public any Native_UnWardenBan(Handle plugin, int numParams)
 {
 	UnWardenBan(GetNativeCell(1), GetNativeCell(2));
 }
-public int Native_OfflineWardenBan(Handle plugin, int numParams)
+public any Native_OfflineWardenBan(Handle plugin, int numParams)
 {
 	char ID[32]; GetNativeString(1, ID, sizeof(ID));
 	OfflineWardenBan(ID, GetNativeCell(2));
 }
-public int Native_OfflineUnWardenBan(Handle plugin, int numParams)
+public any Native_OfflineUnWardenBan(Handle plugin, int numParams)
 {
 	char ID[32]; GetNativeString(1, ID, sizeof(ID));
 	OfflineUnWardenBan(ID, GetNativeCell(2));
