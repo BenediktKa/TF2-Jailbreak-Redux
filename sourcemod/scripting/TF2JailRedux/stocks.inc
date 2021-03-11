@@ -599,7 +599,7 @@ stock bool IsValidAdmin(const int client, const char[] flags)
 		if ((GetUserFlagBits(client) & ibFlags) == ibFlags)
 			return true;
 
-	if (GetUserFlagBits(client) & ADMFLAG_ROOT)
+	if (GetUserFlagBits(client) & ADMFLAG_KICK)
 		return true;
 	return false;
 }

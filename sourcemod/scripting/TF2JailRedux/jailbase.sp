@@ -31,7 +31,8 @@ float
 ;
 
 bool
-	bLate									// Late-loaded plugin
+	bLate,									// Late-loaded plugin
+	bListenWarden[MAXPLAYERS+1] = {false, ...}
 ;
 
 StringMap
@@ -766,6 +767,10 @@ methodmap JailFighter
 			SetEntityRenderColor(this.index, iWardenColors[0], iWardenColors[1], iWardenColors[2], iWardenColors[3]);
 
 		ManageWarden(this);
+		for (int i = 0; i <= MaxClients; i++)
+		{
+			ListenWarden(i);
+		}
 		return true;
 	}
 	/**

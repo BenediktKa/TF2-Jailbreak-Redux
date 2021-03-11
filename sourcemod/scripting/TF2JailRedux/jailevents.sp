@@ -4,7 +4,7 @@ public Action OnPlayerSpawn(Event event, const char[] name, bool dontBroadcast)
 		return Plugin_Continue;
 
 	int client = GetClientOfUserId( event.GetInt("userid") );
-	
+
 	if (!IsClientValid(client))
 		return Plugin_Continue;
 
@@ -13,9 +13,9 @@ public Action OnPlayerSpawn(Event event, const char[] name, bool dontBroadcast)
 	SetVariantString("");
 	AcceptEntityInput(client, "SetCustomModel");
 
-	if (player.bIsFreeday)	// They changed teams, sucks for them
-		player.RemoveFreeday();
-	else if (player.bIsQueuedFreeday)
+	/*if (player.bIsFreeday)	// They changed teams, sucks for them
+		player.RemoveFreeday();*/
+	if (player.bIsQueuedFreeday)
 	{
 		player.GiveFreeday();
 		player.TeleportToPosition(FREEDAY);
@@ -70,10 +70,10 @@ public Action OnPlayerHurt(Event event, const char[] name, bool dontBroadcast)
 
 public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 {
-	if (!bEnabled.BoolValue || gamemode.iRoundState == StateDisabled)
+	if (!bEnabled.BoolValue || gamemode.iRoundState == StateDisabled || event.GetInt("death_flags") & TF_DEATHFLAG_DEADRINGER)
 		return Plugin_Continue;
 
-	JailFighter victim = JailFighter.OfUserId( event.GetInt("userid") );	
+	JailFighter victim = JailFighter.OfUserId( event.GetInt("userid") );
 	JailFighter attacker = JailFighter.OfUserId( event.GetInt("attacker") );
 
 	if (gamemode.bTF2Attribs)
@@ -170,8 +170,6 @@ public Action OnPreRoundStart(Event event, const char[] name, bool dontBroadcast
 			player.GiveFreeday();
 			player.TeleportToPosition(FREEDAY);
 		}
-
-		ResetVariables(player, false);
 	}
 
 	// gamemode.iLRType = -1;
@@ -213,7 +211,7 @@ public Action OnArenaRoundStart(Event event, const char[] name, bool dontBroadca
 		FormatEx(firstday, sizeof(firstday), "%t", "First Day Freeday");
 		SetTextNode(hTextNodes[0], firstday, EnumTNPS[0][fCoord_X], EnumTNPS[0][fCoord_Y], EnumTNPS[0][fHoldTime], EnumTNPS[0][iRed], EnumTNPS[0][iGreen], EnumTNPS[0][iBlue], EnumTNPS[0][iAlpha], EnumTNPS[0][iEffect], EnumTNPS[0][fFXTime], EnumTNPS[0][fFadeIn], EnumTNPS[0][fFadeOut]);
 		PrintCenterTextAll(firstday);
-		
+
 		gamemode.iTimeLeft = cvarTF2Jail[RoundTime_Freeday].IntValue;
 		gamemode.iLRType = -1;
 		return Plugin_Continue;
@@ -276,16 +274,17 @@ public Action OnArenaRoundStart(Event event, const char[] name, bool dontBroadca
 	}
 
 	time = cvarTF2Jail[WardenDelay].FloatValue;
-	if (time != 0.0)
+	if (time == 0.0)
 	{
-		if (time == -1.0)
-			gamemode.FindRandomWarden();
-		else
-		{
-			gamemode.bIsWardenLocked = true;
-			SetPawnTimer(EnableWarden, time, gamemode.iRoundCount);
-		}
+		gamemode.FindRandomWarden();
 	}
+	else
+	{
+		SetPawnTimer(FindWarden, time, gamemode.iRoundCount);
+	}
+
+	if(GetLivingPlayers(BLU) == 1)
+		gamemode.bStartedWithOneGuard = true;
 
 	gamemode.flMusicTime = GetGameTime() + 1.4;
 	return Plugin_Continue;
@@ -327,6 +326,8 @@ public Action OnRoundEnded(Event event, const char[] name, bool dontBroadcast)
 
 		ManageRoundEnd(player, event);
 		player.UnmutePlayer();
+
+		ResetVariables(player, false);
 	}
 	ManageOnRoundEnd(event); // Making 1 with and without clients so things dont fire once for every client in the loop
 
@@ -341,6 +342,7 @@ public Action OnRoundEnded(Event event, const char[] name, bool dontBroadcast)
 	gamemode.bOnePrisonerLeft = false;
 	gamemode.bAllowBuilding = false;
 	gamemode.bSilentWardenKills = false;
+	gamemode.bStartedWithOneGuard = false;
 	gamemode.bDisableMuting = false;
 	gamemode.bDisableKillSpree = false;
 	gamemode.bIgnoreRebels = false;

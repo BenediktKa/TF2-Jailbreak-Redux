@@ -2,7 +2,7 @@ public Action Command_Help(int client, int args)
 {
 	if (!bEnabled.BoolValue || !client)
 		return Plugin_Handled;
-	
+
 	Panel panel = new Panel();
 	char buffer[32];
 	FormatEx(buffer, sizeof(buffer), "%t", "Help Panel Welcome");
@@ -15,7 +15,7 @@ public Action Command_Help(int client, int args)
 	panel.DrawItem(buffer);
 	panel.Send(client, Panel_Help, 9001);
 	delete panel;
-	
+
 	return Plugin_Handled;
 }
 
@@ -89,7 +89,7 @@ public Action Command_BecomeWarden(int client, int args)
 		CPrintToChat(client, "%t %t", "Plugin Tag", "Warden Locked");
 		return Plugin_Handled;
 	}
-	
+
 	if (player.bLockedFromWarden)
 	{
 		CPrintToChat(client, "%t %t", "Plugin Tag", "Locked From Warden");
@@ -115,7 +115,7 @@ public Action Command_ExitWarden(int client, int args)
 		CPrintToChat(client, "%t %t", "Plugin Tag", "Needs Active Round");
 		return Plugin_Handled;
 	}
-	
+
 	JailFighter player = JailFighter(client);
 	if (!player.bIsWarden)
 	{
@@ -128,8 +128,31 @@ public Action Command_ExitWarden(int client, int args)
 
 	player.bLockedFromWarden = true;
 	player.WardenUnset();
-	
+
 	return Plugin_Handled;
+}
+
+public Action Command_WardenCheckLock(int client, int args)
+{
+	if (!bEnabled.BoolValue)
+		return Plugin_Handled;
+
+	if (!client)
+	{
+		CReplyToCommand(client, "%t %t", "Plugin Tag", "Command is in-game only");
+		return Plugin_Handled;
+	}
+
+	if (gamemode.bIsWardenLocked)
+	{
+		CReplyToCommand(client, "%t %t", "Plugin Tag", "Warden Locked");
+		return Plugin_Handled;
+	}
+	else
+	{
+		CReplyToCommand(client, "%t %t", "Plugin Tag", "Warden Not Locked");
+		return Plugin_Handled;
+	}
 }
 
 public Action Command_WardenMenu(int client, int args)
@@ -263,7 +286,7 @@ public Action Command_EnableFriendlyFire(int client, int args)
 		hEngineConVars[0].SetBool(true);
 		CPrintToChatAll("%t %t", "Plugin Tag", "FF On Warden", client);
 	}
-	else 
+	else
 	{
 		hEngineConVars[0].SetBool(false);
 		CPrintToChatAll("%t %t", "Plugin Tag", "FF Off Warden", client);
@@ -489,10 +512,10 @@ public void MusicPanel(const int client)
 
 public int MusicTogglePanel(Menu menu, MenuAction action, int client, int select)
 {
-	if (action == MenuAction_Select) 
+	if (action == MenuAction_Select)
 	{
 		JailFighter player = JailFighter(client);
-		if (select == 1) 
+		if (select == 1)
 		{
 			player.bNoMusic = false;
 			CPrintToChat(client, "%t %t", "Plugin Tag", "Music On");
@@ -521,7 +544,7 @@ public Action AdminRemoveWarden(int client, int args)
 		return Plugin_Handled;
 	}
 	gamemode.FireWarden(false);
-	
+
 	return Plugin_Handled;
 }
 
@@ -541,7 +564,7 @@ public Action AdminDenyLR(int client, int args)
 	{
 		if (!IsClientInGame(i))
 			continue;
-		
+
 		player = JailFighter(i);
 		if (player.bIsQueuedFreeday)
 		{
@@ -1032,7 +1055,7 @@ public void FreedayforClientsMenu(const int client)
 
 	Menu menu = new Menu(MenuHandle_FreedayForClients);
 	menu.SetTitle("%t", "Select For Freeday");
-	
+
 	AddClientsToMenu(menu, false, 0);
 	menu.ExitButton = true;
 	menu.Display(client, 0);
@@ -1071,7 +1094,7 @@ public int MenuHandle_FreedayForClients(Menu menu, MenuAction action, int client
 					FreedayforClientsMenu(client);
 				else limit = 0;
 			}
-			else 
+			else
 			{
 				CPrintToChat(client, "%t %t", "Plugin Tag", "Freeday Max", client);
 				limit = 0;
@@ -1257,7 +1280,7 @@ public Action Command_WardenToggleMedic(int client, int args)
 	if (gamemode.bMedicDisabled)
 		CPrintToChatAll("%t %t", "Plugin Tag", "Medic Room Enabled", client);
 	else CPrintToChatAll("%t %t", "Plugin Tag", "Medic Room Disabled", client);
-	
+
 	gamemode.ToggleMedic(gamemode.bMedicDisabled);
 	return Plugin_Handled;
 }
@@ -1293,7 +1316,7 @@ public Action Command_WardenInvite(int client, int args)
 {
 	if (!bEnabled.BoolValue)
 		return Plugin_Handled;
-	
+
 	if (!client)
 	{
 		CReplyToCommand(client, "%t %t", "Plugin Tag", "Command is in-game only");
@@ -1306,7 +1329,7 @@ public Action Command_WardenInvite(int client, int args)
 		CPrintToChat(client, "%t %t", "Plugin Tag", "Not Warden");
 		return Plugin_Handled;
 	}
-	
+
 	if (!cvarTF2Jail[WardenInvite].BoolValue)
 	{
 		CPrintToChat(client, "%t %t", "Plugin Tag", "Not Enabled");
@@ -1328,7 +1351,7 @@ public Action Command_WardenInvite(int client, int args)
 
 	if (target_count != 1)
 		ReplyToTargetError(client, target_count);
-	
+
 	if (GetClientTeam(target_list[0]) != RED)
 	{
 		CPrintToChat(client, "%t %t", "Plugin Tag", "Target Not On Red");
@@ -1394,7 +1417,7 @@ public Action Command_WardenToggleMuting(int client, int args)
 {
 	if (!bEnabled.BoolValue)
 		return Plugin_Handled;
-	
+
 	if (!client)
 	{
 		CReplyToCommand(client, "%t %t", "Plugin Tag", "Command is in-game only");
@@ -1407,7 +1430,7 @@ public Action Command_WardenToggleMuting(int client, int args)
 		CPrintToChat(client, "%t %t", "Plugin Tag", "Not Warden");
 		return Plugin_Handled;
 	}
-	
+
 	if (!cvarTF2Jail[WardenToggleMuting].BoolValue)
 	{
 		CPrintToChat(client, "%t %t", "Plugin Tag", "Not Enabled");
@@ -1680,4 +1703,25 @@ public Action PluginLength(int client, int args)
 public Action hLRSLength(int client, int args)
 {
 	CReplyToCommand(client, "%d", gamemode.hLRS.Length);
+}
+
+public Action Command_ListenWarden(int iClient, int iArgs)
+{
+	bListenWarden[iClient] ^= true;
+	ListenWarden(iClient);
+	CPrintToChat(iClient, "%t You have %smuted all players%s", "Plugin Tag", bListenWarden[iClient] ? "" : "un", bListenWarden[iClient] ? ", except the warden" : "");
+}
+
+public void ListenWarden(int iClient)
+{
+	if (!IsClientValid(iClient)) return;
+	for (int i = 0; i <= MaxClients; i++)
+	{
+		if (!IsClientValid(i)) continue;	
+		//Don't mute admins - dead players have VOICE_MUTED set on them. I'm not sure if listenflags will override. Untested.
+		if (!CheckCommandAccess(i, "sm_ban", ADMFLAG_GENERIC) && i != gamemode.iWarden.index)
+			SetListenOverride(iClient, i, bListenWarden[iClient] ? Listen_No : Listen_Yes);
+
+		if (IsClientValid(gamemode.iWarden.index)) SetListenOverride(iClient, i, Listen_Yes);
+	}
 }

@@ -4,9 +4,9 @@
 #define TinySound		"vo/scout_sf12_badmagic28.mp3"
 #define NO 				"vo/heavy_no02.mp3"
 
-/** 
+/**
  *	Simply add your new lr name to the enum to register it with function calls and switch statements
- *	Add them to the calls accordingly 
+ *	Add them to the calls accordingly
 */
 enum /** LRs **/
 {
@@ -21,9 +21,9 @@ enum /** LRs **/
 	TinyRound = 7,
 	HotPrisoner = 8,
 	Gravity = 9,
-	SWA = 10,
-	Warday = 11,
-	ClassWars = 12,
+	//SWA = 10,
+	Warday = 10,
+	ClassWars = 11,
 	// VSH = 13,
 	// PH = 14,
 };
@@ -38,7 +38,7 @@ enum /** LRs **/
 
 #include "TF2JailRedux/lastrequests.sp"
 
-/** 
+/**
  *	Add your LR name to the array, referred back to in AddLRsToMenu()
 */
 char strLRNames[][] = {
@@ -52,7 +52,7 @@ char strLRNames[][] = {
 	"Tiny Round",
 	"Hot Prisoner",
 	"Low Gravity",
-	"Stealy Wheely Automobiley",
+	//"Stealy Wheely Automobiley",
 	"Warday",
 	"Class Wars"
 	// "",	// VSH/PH
@@ -61,8 +61,8 @@ char strLRNames[][] = {
 
 /* All non-gamemode oriented functions are at the bottom! */
 
-/** 
- *	Calls on map start, don't forget 'Prepare' stocks precache and set downloads at the same time! 
+/**
+ *	Calls on map start, don't forget 'Prepare' stocks precache and set downloads at the same time!
 */
 public void ManageDownloads()
 {
@@ -91,7 +91,7 @@ public void ManageDownloads()
 	iHalo = PrecacheModel("materials/sprites/glow01.vmt", true);
 	iHalo2 = PrecacheModel("materials/sprites/halo01.vmt", true);
 
-	CSWA.SetDownloads();
+	//CSWA.SetDownloads();
 	CHHHDay.SetDownloads();
 	CHotPrisoner.SetDownloads();
 
@@ -113,7 +113,7 @@ public void ManageHUDText()
 		case TinyRound:		strcopy(strHudName, sizeof(strHudName), "Tiny Round");
 		case HotPrisoner:	strcopy(strHudName, sizeof(strHudName), "Hot Prisoners");
 		case Gravity:		strcopy(strHudName, sizeof(strHudName), "Low Gravity");
-		case SWA:			strcopy(strHudName, sizeof(strHudName), "Stealy Wheely Automobiley");
+		//case SWA:			strcopy(strHudName, sizeof(strHudName), "Stealy Wheely Automobiley");
 		case Warday:		strcopy(strHudName, sizeof(strHudName), "Warday");
 		case ClassWars:		strcopy(strHudName, sizeof(strHudName), "Class Warfare");
 	}
@@ -209,7 +209,7 @@ public void ManageRoundStart(Event event)
 			EmitSoundToAll(GravSound);
 			hEngineConVars[2].SetInt(100);
 		}
-		case SWA:CSWA.Initialize();
+		//case SWA:CSWA.Initialize();
 		case Warday:
 		{
 			CPrintToChatAll("%t %t", "Plugin Tag", "Warday Start");
@@ -263,7 +263,7 @@ public void ManageRoundStartPlayer(const JailFighter player, Event event)
 		}
 		case TinyRound:SetEntPropFloat(client, Prop_Send, "m_flModelScale", 0.3);
 		case Warday, ClassWars:SetPawnTimer(ResetPlayer, 0.2, client);
-		case SWA:CSWA.Activate(player);
+		//case SWA:CSWA.Activate(player);
 		case HHHDay:CHHHDay.Activate(player);
 		case HotPrisoner:CHotPrisoner.Activate(player);
 	}
@@ -278,7 +278,13 @@ public void ManageTimeLeft()
 	switch (gamemode.iLRType)
 	{
 		case -1:{	}
-		case SWA:time = 180;
+		//case SWA:time = 180;
+		case FreedayAll:time = 300;
+		case HHHDay:time = 300;
+		case TinyRound:time = 300;
+		case Gravity:time = 300;
+		case Warday:time = 420;
+		case ClassWars:time = 420;
 	}
 	Call_OnTimeLeft(time);
 
@@ -294,12 +300,12 @@ public void ManageOnRoundEnd(Event event)
 		case Gravity:hEngineConVars[2].SetInt(800);
 		case HHHDay:CHHHDay.Terminate(event);
 		case HotPrisoner:CHotPrisoner.Terminate(event);
-		case SWA:CSWA.Terminate(event);
+		//case SWA:CSWA.Terminate(event);
 	}
 	Call_OnRoundEnd(event);
 }
-/** 
- *	Calls on round end obviously, resets should be put here as well 
+/**
+ *	Calls on round end obviously, resets should be put here as well
 */
 public void ManageRoundEnd(const JailFighter base, Event event)
 {
@@ -318,9 +324,9 @@ public void ManageCells()
 {
 	switch (gamemode.iLRType)
 	{
-		case FreedayAll, 
-			TinyRound, 
-			Warday, 
+		case FreedayAll,
+			TinyRound,
+			Warday,
 			ClassWars
 			:gamemode.DoorHandler(OPEN);
 		/*case example:gamemode.DoorHandler(OPEN or CLOSE or LOCK or UNLOCK);*/
@@ -360,8 +366,8 @@ public void ManageFFTimer()
 	float time;
 	switch (gamemode.iLRType)
 	{
-		case 
-			HHHDay, 
+		case
+			HHHDay,
 			TinyRound
 		:time = 10.0;
 	}
@@ -374,9 +380,18 @@ public void ManageFFTimer()
  *	Register what happens when a player receives a TFCond condition
 */
 public void TF2_OnConditionAdded(int client, TFCond cond)
-{	
+{
 	switch (cond)
 	{
+	       case TFCond_Cloaked:
+		{
+			if (cvarTF2Jail[HideParticles].BoolValue)
+			{
+				int particle = EntRefToEntIndex(JailFighter(client).iRebelParticle);
+				if(particle != -1)
+					AcceptEntityInput(particle, "Stop");
+			}
+		}
 		case TFCond_Disguising, TFCond_Disguised:
 		{
 			switch (cvarTF2Jail[Disguising].IntValue)
@@ -397,18 +412,29 @@ public void TF2_OnConditionAdded(int client, TFCond cond)
 		}
 	}
 }
+
 /**
  *	Vice versa as above
 */
-/*public void TF2_OnConditionRemoved(int client, TFCond cond)
+
+public void TF2_OnConditionRemoved(int client, TFCond cond)
 {
 	switch (cond)
 	{
-		case -1: {	}
+		case TFCond_Cloaked:
+		{
+			if (cvarTF2Jail[HideParticles].BoolValue)
+			{
+				int particle = EntRefToEntIndex(JailFighter(client).iRebelParticle);
+				if(particle != -1)
+					AcceptEntityInput(particle, "Start");
+			}
+		}
+		//case -1: {	}
 	}
-}*/
+}
 
-/** 
+/**
  *	Think: Code called every 0.1 seconds per client
  *	If lr requires the same think properties from both teams, set it under both team thinks
  *	WardenThink and BlueThink can overlap
@@ -421,19 +447,19 @@ public void ManageRedThink(const JailFighter player)
 	switch (gamemode.iLRType)
 	{
 		case -1: {	}
-		case SWA:CSWA.ManageThink(player);
+		//case SWA:CSWA.ManageThink(player);
 	}
 	Call_OnRedThink(player);
 }
 /**
- *	Manage complete Blue Team think 
+ *	Manage complete Blue Team think
 */
 public void ManageBlueThink(const JailFighter player)
 {
 	switch (gamemode.iLRType)
 	{
 		case -1: {	}
-		case SWA:CSWA.ManageThink(player);
+		//case SWA:CSWA.ManageThink(player);
 	}
 
 	if (!gamemode.bDisableCriticals && cvarTF2Jail[CritType].IntValue == 1)
@@ -485,19 +511,19 @@ public void ManageOnPreThink(const JailFighter base)
 */
 public void ManageHurtPlayer(const JailFighter attacker, const JailFighter victim, Event event)
 {
-	int damage = event.GetInt("damageamount");
+	//int damage = event.GetInt("damageamount");
 	// int custom = event.GetInt("custom");
 	// int weapon = event.GetInt("weaponid");
-	
+
 	switch (gamemode.iLRType)
 	{
-		case SWA:victim.iHealth -= damage;
+		//case SWA:victim.iHealth -= damage;
 		case -1: {	}
 	}
 
 	Call_OnHurtPlayer(victim, attacker, /*damage, custom, weapon, */event);
 }
-/** 
+/**
  *	Calls when damage is taken/given during lr with SDKHooks
 */
 public Action ManageOnTakeDamage(const JailFighter victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)
@@ -516,18 +542,19 @@ public Action ManageOnTakeDamage(const JailFighter victim, int &attacker, int &i
 					PrintCenterTextAll("%t", "Attack Guard Lose Freeday", attacker);
 				}
 
+				if(cvarTF2Jail[CritType].IntValue == 3 && GetClientTeam(attacker) == BLU && GetClientTeam(victim.index) == RED)
+				{
+					damage *= 1.5;
+					action = Plugin_Changed;
+				}
+
 				if (victim.bIsFreeday && !base.bIsWarden)
 				{
 					damage *= 0.0;
 					action = Plugin_Changed;
 				}
 
-				if (GetClientTeam(attacker) == BLU && cvarTF2Jail[CritType].IntValue == 2 && !gamemode.bDisableCriticals)
-				{
-					damagetype |= DMG_CRIT;
-					action = Plugin_Changed;
-				}
-				else if (GetClientTeam(attacker) == RED && GetClientTeam(victim.index) == BLU && (gamemode.iRoundState == StateRunning || gamemode.iRoundState == StateDisabled))
+				if (GetClientTeam(attacker) == RED && GetClientTeam(victim.index) == BLU && (gamemode.iRoundState == StateRunning || gamemode.iRoundState == StateDisabled))
 					base.MarkRebel();
 			}
 		}
@@ -545,6 +572,7 @@ public void ManagePlayerDeath(const JailFighter attacker, const JailFighter vict
 	{
 		case HHHDay:CHHHDay.ManageDeath(attacker, victim, event);
 	}
+
 	Call_OnPlayerDied(victim, attacker, event);
 }
 /**
@@ -555,7 +583,7 @@ public void CheckLivingPlayers()
 	if (gamemode.iRoundState != StateRunning || gamemode.iTimeLeft < 0)
 		return;
 
-	if (!gamemode.bOneGuardLeft)
+	if (!gamemode.bOneGuardLeft && !gamemode.bStartedWithOneGuard)
 	{
 		if (GetLivingPlayers(BLU) == 1)
 		{
@@ -595,14 +623,14 @@ public void CheckLivingPlayers()
 	}
 	Call_OnCheckLivingPlayers();
 }
-/** 
+/**
  *	This is all VSH stuff. Doing this to make more of a grasp with forwards
  *
  *	Since when can people build buildings? Oh wait map buildings
 */
 public void ManageBuildingDestroyed(const JailFighter base, const int building, const int objecttype, Event event)
 {
-	switch (gamemode.iLRType) 
+	switch (gamemode.iLRType)
 	{
 		case -1: {	}
 	}
@@ -613,7 +641,7 @@ public void ManageBuildingDestroyed(const JailFighter base, const int building, 
 */
 public void ManageOnAirblast(const JailFighter airblaster, const JailFighter airblasted, Event event)
 {
-	switch (gamemode.iLRType) 
+	switch (gamemode.iLRType)
 	{
 		default: {  }
 	}
@@ -669,7 +697,7 @@ public Action ManageTimeEnd()
 {
 	switch (gamemode.iLRType)
 	{
-		case SWA:return CSWA.ManageTimeEnd();
+		//case SWA:return CSWA.ManageTimeEnd();
 		default:return Call_OnTimeEnd();
 	}
 #if SOURCEMOD1_9
@@ -692,6 +720,13 @@ public Action TF2_CalcIsAttackCritical(int client, int weapon, char[] weaponname
  	{
  		case -1: {	}
  	}
+
+ 	if (GetClientTeam(client) == BLU && cvarTF2Jail[CritType].IntValue == 2 && !gamemode.bDisableCriticals)
+	{
+		result = true;
+		return Plugin_Changed;
+	}
+
  	return Call_OnCalcAttack(base, weapon, weaponname, result);
 }
 /**
@@ -752,9 +787,9 @@ public void AddLRToPanel(Menu &panel)
 			case 7:name = "Tiny Round- Honey I shrunk the players";
 			case 8:name = "Hot Prisoner- Prisoners are too hot to touch";
 			case 9:name = "Low Gravity- Where did the gravity go";
-			case 10:name = "Stealy Wheely Automobiley- Learn how the Mercedes bends";
-			case 11:name = "Warday- Team Deathmatch";
-			case 12:name = "Class Wars- Class versus class Warday";
+			//case 10:name = "Stealy Wheely Automobiley- Learn how the Mercedes bends";
+			case 10:name = "Warday- Team Deathmatch";
+			case 11:name = "Class Wars- Class versus class Warday";
 		}
 		Call_OnPanelAdd(i, name);
 
@@ -762,7 +797,7 @@ public void AddLRToPanel(Menu &panel)
 		panel.AddItem(id, name);
 	}
 }
-/** 
+/**
  *	Called when player is given lr and is selecting. Place your lr under the MenuAction_Select case
  *	Use the already given lr's as a guide if you need help
 */
@@ -786,7 +821,7 @@ public int ListLRsMenu(Menu menu, MenuAction action, int client, int select)
 					base = JailFighter(i);
 					if (!base.bIsFreeday)
 						continue;
-						
+
 					base.RemoveFreeday();
 				}
 				CPrintToChatAll(TAG ... "%t", "LR Chosen");
@@ -797,7 +832,7 @@ public int ListLRsMenu(Menu menu, MenuAction action, int client, int select)
 
 			if (Call_OnLRPicked(base, request, gamemode.hLRS) != Plugin_Continue)
 				return;
-	
+
 			int value;
 			if (request != -1)	// If the selection isn't random
 				value = gamemode.hLRS.Get(request);
@@ -848,7 +883,7 @@ public int ListLRsMenu(Menu menu, MenuAction action, int client, int select)
 				case TinyRound:		CPrintToChatAll("%t %t", "Plugin Tag", "Tiny Round Select", client);
 				case HotPrisoner:	CPrintToChatAll("%t %t", "Plugin Tag", "Hot Prisoner Select", client);
 				case Gravity:		CPrintToChatAll("%t %t", "Plugin Tag", "Gravity Round Select", client);
-				case SWA:			CPrintToChatAll("%t %t", "Plugin Tag", "Automobile Start", client);
+				//case SWA:			CPrintToChatAll("%t %t", "Plugin Tag", "Automobile Start", client);
 				case Warday:		CPrintToChatAll("%t %t", "Plugin Tag", "Warday Select", client);
 				case ClassWars:		CPrintToChatAll("%t %t", "Plugin Tag", "ClassWars Select", client);
 			}
@@ -886,7 +921,7 @@ public void ResetVariables(const JailFighter base, const bool compl)
 	base.bInJump = false;
 	base.bUnableToTeleport = false;
 	base.bIsRebel = false;
-	base.bIsQueuedFreeday = false;
+	//base.bIsQueuedFreeday = false;
 	base.flSpeed = 0.0;
 	base.flKillingSpree = 0.0;
 	base.flHealTime = 0.0;
@@ -900,7 +935,7 @@ public void ResetVariables(const JailFighter base, const bool compl)
 	Call_OnVariableReset(base);
 }
 /**
- *	Sticking this in Handler just in case someone wants to be incredibly specific with their lr 
+ *	Sticking this in Handler just in case someone wants to be incredibly specific with their lr
 */
 public void ManageEntityCreated(int ent, const char[] classname)
 {
@@ -912,7 +947,7 @@ public void ManageEntityCreated(int ent, const char[] classname)
 
 	if (cvarTF2Jail[KillPointServerCommand].BoolValue && StrContains(classname, "point_servercommand", false) != -1)
 		RequestFrame(RemoveEnt, EntIndexToEntRef(ent));
-	
+
 	if (cvarTF2Jail[DroppedWeapons].BoolValue && StrEqual(classname, "tf_dropped_weapon"))
 		RequestFrame(RemoveEnt, EntIndexToEntRef(ent));
 

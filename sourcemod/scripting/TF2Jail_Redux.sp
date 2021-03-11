@@ -20,7 +20,7 @@
  **/
 
 #define PLUGIN_NAME 		"[TF2] Jailbreak Redux"
-#define PLUGIN_VERSION 		"1.4.0"
+#define PLUGIN_VERSION 		"1.5.0"
 #define PLUGIN_AUTHOR 		"Scag/Ragenewb, props to Drixevel and Nergal/Assyrian"
 #define PLUGIN_DESCRIPTION 	"Deluxe version of TF2Jail"
 
@@ -202,7 +202,7 @@ public void OnPluginStart()
 	cvarTF2Jail[AdmFlag] 					= CreateConVar("sm_tf2jr_admin_flag", "b", "What admin flag do admins fall under? Leave blank to disable Admin perks.", FCVAR_NOTIFY);
 	cvarTF2Jail[DisableBlueMute] 			= CreateConVar("sm_tf2jr_blue_mute", "1", "Disable joining blue team for muted players?", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	cvarTF2Jail[Markers] 					= CreateConVar("sm_tf2jr_warden_markers", "3", "Warden markers lifetime in seconds? (0 to disable them entirely)", FCVAR_NOTIFY, true, 0.0, true, 30.0);
-	cvarTF2Jail[CritType] 					= CreateConVar("sm_tf2jr_criticals", "2", "What type of criticals should guards get? 0 = none; 1 = mini-crits; 2 = full crits", FCVAR_NOTIFY, true, 0.0, true, 2.0);
+	cvarTF2Jail[CritType] 					= CreateConVar("sm_tf2jr_criticals", "2", "What type of criticals should guards get? 0 = none; 1 = mini-crits; 2 = full crits; 3 = x1.5 damage", FCVAR_NOTIFY, true, 0.0, true, 3.0);
 	cvarTF2Jail[MuteType] 					= CreateConVar("sm_tf2jr_muting", "6", "What type of dead player muting should occur? 0 = none; 1 = red players(except VIPs); 2 = blue players(except VIPs); 3 = all players(except VIPs); 4 = all red players; 5 = all blue players; 6 = everybody. ADMINS ARE EXEMPT FROM ALL OF THESE!", FCVAR_NOTIFY, true, 0.0, true, 6.0);
 	cvarTF2Jail[LivingMuteType] 			= CreateConVar("sm_tf2jr_live_muting", "1", "What type of living player muting should occur? 0 = none; 1 = red players(except VIPs); 2 = blue players(except VIPs and warden); 3 = all players(except VIPs and warden); 4 = all red players; 5 = all blue players(except warden); 6 = everybody(except warden). ADMINS ARE EXEMPT FROM ALL OF THESE!", FCVAR_NOTIFY, true, 0.0, true, 6.0);
 	cvarTF2Jail[Disguising] 				= CreateConVar("sm_tf2jr_disguising", "0", "What teams can disguise, if any? (Your Eternal Reward only) 0 = no disguising; 1 = only Red can disguise; 2 = Only blue can disguise; 3 = all players can disguise", FCVAR_NOTIFY, true, 0.0, true, 3.0);
@@ -304,6 +304,8 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_wardeninv", Command_WardenInvite, "Allows the Warden to invite players to the Guards team.");
 	RegConsoleCmd("sm_wmute", Command_WardenToggleMuting, "Allows the Warden to toggle plugin muting.");
 	RegConsoleCmd("sm_wardenmute", Command_WardenToggleMuting, "Allows the Warden to toggle plugin muting.");
+	RegConsoleCmd("sm_iswardenlocked", Command_WardenCheckLock, "Allows players to check if the warden is locked");
+	RegConsoleCmd("sm_listenwarden", Command_ListenWarden, "Allows players to toggle mute all players except the warden");
 
 	RegAdminCmd("sm_rw", AdminRemoveWarden, ADMFLAG_GENERIC, "Remove the currently active Warden.");
 	RegAdminCmd("sm_removewarden", AdminRemoveWarden, ADMFLAG_GENERIC, "Remove the currently active Warden.");
@@ -840,6 +842,10 @@ public void OnClientPostAdminCheck(int client)
 	// Brute force them to be unmuted, then let properties take over
 
 	gamemode.ToggleMuting(player);
+
+	bListenWarden[client] = false;
+	for (int i = 0; i <= MaxClients; i++)
+		ListenWarden(i);
 }
 
 public void OnClientDisconnect(int client)
@@ -927,11 +933,15 @@ public Action Timer_PlayerThink(Handle timer)
 			if (!player.bIsFreeday)
 				continue;
 			/* Props to <eVa>Dog */
-			float vecOrigin[3]; GetClientAbsOrigin(i, vecOrigin);
-			TE_SetupBeamPoints(vecOld[i], vecOrigin, iLaserBeam, iHalo2, 0, 0, cvarTF2Jail[FreedayBeamLifetime].FloatValue, 20.0, 10.0, 5, 0.0, {255, 25, 25, 255}, 30);
-			TE_SendToAll();
 
-			vecOld[i] = vecOrigin;
+			if(cvarTF2Jail[FreedayBeamLifetime].FloatValue > 0.0)
+			{
+				float vecOrigin[3]; GetClientAbsOrigin(i, vecOrigin);
+				TE_SetupBeamPoints(vecOld[i], vecOrigin, iLaserBeam, iHalo2, 0, 0, cvarTF2Jail[FreedayBeamLifetime].FloatValue, 20.0, 10.0, 5, 0.0, {255, 25, 25, 255}, 30);
+				TE_SendToAll();
+
+				vecOld[i] = vecOrigin;
+			}
 
 			if (TF2_GetPlayerClass(i) == TFClass_Medic)
 			{
@@ -1668,6 +1678,17 @@ public void FreeKillSystem(const JailFighter attacker)
 		attacker.iKillCount = 0;
 	}
 	else attacker.flKillingSpree = currtime + cvarTF2Jail[FreeKillTime].FloatValue;
+}
+
+public void FindWarden(const int roundcount)
+{
+	if (roundcount != gamemode.iRoundCount 
+	 || gamemode.iRoundState != StateRunning
+	 || gamemode.bWardenExists)
+		return;
+
+	gamemode.SetWardenLock(false);
+	gamemode.FindRandomWarden();
 }
 
 public void EnableWarden(const int roundcount)

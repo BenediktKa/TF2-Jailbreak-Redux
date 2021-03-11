@@ -240,6 +240,18 @@ methodmap JailGameMode < StringMap
 			this.SetValue("bFreedayTeleportSet", i);
 		}
 	}
+	property bool bStartedWithOneGuard
+	{
+		public get()
+		{
+			bool i; this.GetValue("bStartedWithOneGuard", i);
+			return i;
+		}
+		public set( const bool i )
+		{
+			this.SetValue("bStartedWithOneGuard", i);
+		}
+	}
 	property bool bWardayTeleportSetBlue
 	{
 		public get()
@@ -879,7 +891,7 @@ methodmap JailGameMode < StringMap
 		int team = teamchange ? teamchange : GetClientTeam(player.index);
 		bool ismute = player.bIsMuted;
 
-		if (!team)	// If player is in spec, assume red team rules of muting
+		if (team <= 1)	// If player is in spec or unassigned, assume red team rules of muting
 			team = RED;
 
 		switch (type)
